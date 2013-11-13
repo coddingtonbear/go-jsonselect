@@ -1,133 +1,214 @@
 package jsonselect
 
 import (
+    "errors"
+    "fmt"
     "regexp"
+    "strings"
+    "strconv"
 )
 
-type itemType string
+type tokenType string
 
-type lexerItem struct {
-    typ itemType
-    val string
+type token struct {
+    typ tokenType
+    val interface{}
 }
 
 type scannerItem struct {
-    regex string
-    typ itemType
+    regex *regexp.Regexp
+    typ tokenType
 }
 
 const (
-    S_TYPE itemType = "s_type"
-    S_IDENTIFIER itemType = "s_identifier"
-    S_QUOTED_IDENTIFIER itemType = "s_quoted_identifier"
-    S_PCLASS itemType = "s_pclass"
-    S_PCLASS_FUNC itemType = "s_pclass_func"
-    S_NTH_FUNC itemType = "s_nth_func"
-    S_OPER itemType = "s_oper"
-    S_EMPTY itemType = "s_empty"
-    S_UNK itemType = "s_unk"
-    S_FLOAT itemType = "s_float"
-    S_WORD itemType = "s_word"
-    S_BINOP itemType = "s_binop"
-    S_VALS itemType = "s_vals"
-    S_KEYWORD itemType = "s_keyword"
-    S_PVAR itemType = "s_pvar"
-    S_EXPR itemType = "s_expr"
-    S_NUMBER itemType = "s_number"
-    S_STRING itemType = "s_string"
-    S_PAREN itemType = "s_paren"
+    S_TYPE tokenType = "type"
+    S_IDENTIFIER tokenType = "identifier"
+    S_QUOTED_IDENTIFIER tokenType = "quoted_identifier"
+    S_PCLASS tokenType = "pclass"
+    S_PCLASS_FUNC tokenType = "pclass_func"
+    S_NTH_FUNC tokenType = "nth_func"
+    S_OPER tokenType = "operator"
+    S_EMPTY tokenType = "empty"
+    S_UNK tokenType = "unknown"
+    S_FLOAT tokenType = "float"
+    S_WORD tokenType = "word"
+    S_BINOP tokenType = "binop"
+    S_BOOL tokenType = "bool"
+    S_NIL tokenType = "null"
+    S_KEYWORD tokenType = "keyword"
+    S_PVAR tokenType = "pvar"
+    S_EXPR tokenType = "expr"
+    S_NUMBER tokenType = "number"
+    S_STRING tokenType = "string"
+    S_PAREN tokenType = "paren"
 )
 
-var scanner = [17]scannerItem{
+var scanner = []scannerItem{
     scannerItem{
-        `\([^\)]+\)`,
+        regexp.MustCompile(`\([^\)]+\)`),
         S_EXPR,
     },
     scannerItem{
-        `[~*,>]`,
+        regexp.MustCompile(`[~*,>]`),
         S_OPER,
     },
     scannerItem{
-        `\s`,
+        regexp.MustCompile(`\s`),
         S_EMPTY,
     },
     scannerItem{
-        `(-?\d+(\.\d*)([eE][+\-]?\d+)?)`,
+        regexp.MustCompile(`(-?\d+(\.\d*)([eE][+\-]?\d+)?)`),
         S_FLOAT,
     },
     scannerItem{
-        `string|boolean|null|array|object|number`,
+        regexp.MustCompile(`string|boolean|null|array|object|number`),
         S_TYPE,
     },
     scannerItem{
-        `\"([_a-zA-Z]|[^\0-\0177]|\\[^\s0-9a-fA-F])([_a-zA-Z0-9\-]|[^\u0000-\u0177]|(\\[^\s0-9a-fA-F]))*\"`,
+        regexp.MustCompile(`\"([_a-zA-Z]|[^\0-\0177]|\\[^\s0-9a-fA-F])([_a-zA-Z0-9\-]|[^\u0000-\u0177]|(\\[^\s0-9a-fA-F]))*\"`),
         S_WORD,
     },
     scannerItem{
-        `\.?\"([^"\\]|\\[^"])*\"`,
+        regexp.MustCompile(`\.?\"([^"\\]|\\[^"])*\"`),
         S_QUOTED_IDENTIFIER,
     },
     scannerItem{
-        `\.([_a-zA-Z]|[^\0-\0177]|\\[^\s0-9a-fA-F])([_a-zA-Z0-9\-]|[^\u0000-\u0177]|(\\[^\s0-9a-fA-F]))*`,
+        regexp.MustCompile(`\.([_a-zA-Z]|[^\0-\0177]|\\[^\s0-9a-fA-F])([_a-zA-Z0-9\-]|[^\u0000-\u0177]|(\\[^\s0-9a-fA-F]))*`),
         S_IDENTIFIER,
     },
     scannerItem{
-        `:(root|empty|first-child|last-child|only-child)`,
+        regexp.MustCompile(`:(root|empty|first-child|last-child|only-child)`),
         S_PCLASS,
     },
     scannerItem{
-        `:(has|expr|val|contains)`,
+        regexp.MustCompile(`:(has|expr|val|contains)`),
         S_PCLASS_FUNC,
     },
     scannerItem{
-        `:(nth-child|nth-last-child)`,
+        regexp.MustCompile(`:(nth-child|nth-last-child)`),
         S_NTH_FUNC,
     },
     scannerItem{
-        `(&&|\|\||[\$\^<>!\*]=|[=+\-*/%<>])`,
+        regexp.MustCompile(`(&&|\|\||[\$\^<>!\*]=|[=+\-*/%<>])`),
         S_BINOP,
     },
     scannerItem{
-        `true|false|null`,
-        S_VALS,
+        regexp.MustCompile(`true|false`),
+        S_BOOL,
     },
     scannerItem{
-        `n`,
+        regexp.MustCompile(`null`),
+        S_NIL,
+    },
+    scannerItem{
+        regexp.MustCompile(`n`),
         S_PVAR,
     },
     scannerItem{
-        `odd|even`,
+        regexp.MustCompile(`odd|even`),
         S_KEYWORD,
     },
 }
 
-var expressionScanner = [7]scannerItem{
+var expressionScanner = []scannerItem{
     scannerItem{
-        `\s`,
+        regexp.MustCompile(`\s`),
         S_KEYWORD,
     },
     scannerItem{
-        `true|false|null`,
-        S_VALS,
+        regexp.MustCompile(`true`),
+        S_BOOL,
     },
     scannerItem{
-        `-?\d+(\.\d*)?([eE][+\-]?\d+)?`,
+        regexp.MustCompile(`null`),
+        S_NIL,
+    },
+    scannerItem{
+        regexp.MustCompile(`-?\d+(\.\d*)?([eE][+\-]?\d+)?`),
         S_NUMBER,
     },
     scannerItem{
-        `\"([^\]|\[^\"])*\"`,
+        regexp.MustCompile(`\"([^\]|\[^\"])*\"`),
         S_STRING,
     },
     scannerItem{
-        `x`,
+        regexp.MustCompile(`x`),
         S_PVAR,
     },
     scannerItem{
-        `(&&|\|\||[\$\^<>!\*]=|[=+\-*/%<>])`,
+        regexp.MustCompile(`(&&|\|\||[\$\^<>!\*]=|[=+\-*/%<>])`),
         S_BINOP,
     },
     scannerItem{
-        `\(|\)`,
+        regexp.MustCompile(`\(|\)`),
         S_PAREN,
     },
+}
+
+
+func lexNextToken(input string, scanners []scannerItem) (*token, int, error) {
+    for _, scanner := range scanners {
+        idx := scanner.regex.FindStringIndex(input)
+        if idx == nil {
+            continue
+        }
+        if idx[0] == 0 {
+            token := getToken(
+                scanner.typ,
+                input[idx[0]:idx[1]],
+            )
+            return &token, idx[1], nil
+        }
+    }
+    return nil, len(input), errors.New(fmt.Sprintf("Parsing error at %s", input))
+}
+
+
+func Lex(input string, scanners []scannerItem) ([]*token, error) {
+    var tokens []*token
+    var start = 0
+    var token *token
+    var err error
+    for start < len(input) {
+        token, start, err = lexNextToken(input[start:], scanners)
+        if err != nil {
+            return nil, err
+        }
+        if token.typ != S_EMPTY {
+            tokens = append(
+                tokens,
+                token,
+            )
+        }
+    }
+    return tokens, nil
+}
+
+
+func getToken(typ tokenType, val string) token {
+    switch typ {
+        case S_IDENTIFIER, S_PCLASS, S_PCLASS_FUNC, S_NTH_FUNC:
+            return token{typ, val[1:]}
+        case S_QUOTED_IDENTIFIER:
+            return token{S_IDENTIFIER, strings.Replace(val, `"`, "", 0)}
+        case S_NIL:
+            return token{typ, nil}
+        case S_BOOL:
+            result, _ := strconv.ParseBool(val)
+            return token{typ, result}
+        case S_NUMBER: {
+            result, _ := strconv.ParseInt(val, 10, 64)
+            return token{typ, result}
+        }
+        case S_EMPTY:
+            return token{typ, " "}
+        case S_FLOAT: {
+            result, _ := strconv.ParseFloat(val, 32)
+            return token{typ, result}
+        }
+        case S_WORD:
+            return token{typ, val[1:len(val)-2]}
+        default:
+            return token{typ, val}
+    }
 }
