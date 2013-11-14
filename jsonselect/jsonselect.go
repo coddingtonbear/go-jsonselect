@@ -280,19 +280,145 @@ func (p *Parser) nthChildProduction(value interface{}, tokens []*token) func(*No
 
 func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token) func(*Node)bool {
     args, _ := p.match(tokens, S_EXPR)
+    pclass = value.(string)
 
-    if value.(string) == "expr" {
+    if pclass == "expr" {
         tokens, _ := Lex(args.(string), EXPRESSION_SCANNER)
         return func(node *Node)bool {
-            return p.parseExpression(tokens, node)
+            return p.parseExpression(tokens, node).(bool)
         }
     }
 
     args, _ = Lex(args.(string)[1:len(args.(string))-1], SCANNER)
 
-    // KEEP GOING FROM HERE
+    if pclass == "has" {
+        for _, token := range args {
+            if token.value == ">" {
+                token.typ = S_EMPTY
+            }
+        }
+        rvals := p.selectorProduction(args)
+
+        var ancestors []*Node
+        for _, node := range rvals {
+            ancestors = append(ancestors, node.parent)
+        }
+        return func(node *Node)bool {
+            return ndoeIsMemberOfList(node, ancestors)
+        }
+    } else if pclass == "contains" {
+        return func(node *Node)bool {
+            return node.typ == J_STRING && strings.Count(node.value.(string), args[0].val.(string)) > 0
+        }
+    } else if pclass == "val" {
+        return func(node *Node)bool {
+            return node.typ == J_STRING && node.value.(string) == args[0].val.(string)
+        }
+    }
+
+    // If we didn't find a known pclass, do not match anything.
+    return func(node *Node)bool {
+        return false
+    }
 }
 
-func (p *Parser) parseExpression(tokens []*token, node *Node) bool {
-    return false
+func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[string]func(*token, *token)int) interface{} {
+    var matched bool
+    if len(tokens) < 1 {
+        return false
+    }
+
+    value, matched, _ = p.peek(tokens, S_PAREN)
+    if matched && value.(string) == "(" {
+        p.match(tokens, S_PAREN)
+        lhs := p.evaluateParsedExpression(tokens, node, cmap)
+        return lhs
+    }
+
+    _, matched, _ = p.peek(tokens, S_PVAR)
+    if matched {
+        p.match(tokens, S_PVAR)
+        lhs = node.value
+    } else {
+        relevantTokens := []tokenType{S_STRING, S_BOOL, S_NIL, S_NUMBER}
+        for _, ttype := range relevantTokens {
+            _, matched, _ = p.peek(tokens, ttype)
+            if matched {
+                lhs := p.match(tokens, ttype)
+                break
+            }
+        }
+    }
+
+    value, matched, _ = p.peek(tokens, S_PAREN)
+    if matched && value.(string) == ")" {
+        p.match(tokens, S_PAREN)
+        return lhs
+    }
+
+    binop, _ := p.match(tokens, S_BINOP)
+    comparatorFunction = cmap[binop.(string)]
+    rhs := p.evaluateParsedExpression(tokens, node, cmap)
+
+    return comparatorFunction(lhs, rhs)
+}
+
+func (p *Parser) parseExpression(tokens []*token, node *Node) interface{} {
+    comparatorMap = map[string]func(lhs *token, rhs *token)int {
+        "*": func(lhs *token, rhs *token)int {
+            return lhs.val.(int) * rhs.val.(int)
+        },
+        "/": func(lhs *token, rhs *token)int {
+            return lhs.val.(int) / rhs.val.(int)
+        },
+        "%": func(lhs *token, rhs *token)int {
+            return lhs.val.(int) % rhs.val.(int)
+        },
+        "+": func(lhs *token, rhs *token)int {
+            return lhs.val.(int) + rhs.val.(int)
+        },
+        "-": func(lhs *token, rhs *token)int {
+            return lhs.val.(int) - rhs.val.(int)
+        },
+        "<=": func(lhs *token, rhs *token)int {
+            return lhs.val.(int) <= rhs.val.(int)
+        },
+        "<": func(lhs *token, rhs *token)int {
+            return lhs.val.(int) < rhs.val.(int)
+        },
+        ">=": func(lhs *token, rhs *token)int {
+            return lhs.val.(int) > rhs.val.(int)
+        },
+        ">": func(lhs *token, rhs *token)int {
+            return lhs.val.(int) > rhs.val.(int)
+        },
+        "$=": func(lhs *token, rhs *token)int {
+            lhs_str = lhs.(string)
+            rhs_str = rhs.(string)
+            return strings.LastIndex(lhs_str, rhs_str) == len(lhs_str) - len(rhs_str)
+        },
+        "^=": func(lhs *token, rhs *token)int {
+            lhs_str = lhs.(string)
+            rhs_str = rhs.(string)
+            return strings.Index(lhs_str, rhs_str) == 0
+        },
+        "*=": func(lhs *token, rhs *token)int {
+            lhs_str = lhs.(string)
+            rhs_str = rhs.(string)
+            return strings.Index(lhs_str, rhs_str) != 0
+        },
+        "=": func(lhs *token, rhs *token)int {
+            return lhs.(string) == rhs.(string)
+        },
+        "!=": func(lhs *token, rhs *token)int {
+            return lhs.(string) != rhs.(string)
+        },
+        "&&": func(lhs *token, rhs *token)int {
+            return lhs.(string) && rhs.(string)
+        },
+        "||": func(lhs *token, rhs *token)int {
+            return lhs.(string) || rhs.(string)
+        },
+    }
+    return p.evaluateParsedExpression(tokens, node, comparatorMap)
 }
