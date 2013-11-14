@@ -6,10 +6,15 @@ import (
 )
 
 func main() {
-    result, err := jsonselect.Lex(
-        "test",
-        jsonselect.EXPRESSION_SCANNER,
+    results, err := jsonselect.Lex(
+        ".biscuits:has(magic) string:nth-last-child(even)",
+        jsonselect.SCANNER,
     )
-    fmt.Println(result)
-    fmt.Println(err)
+    if err != nil {
+        fmt.Println(err)
+    } else {
+        for _, result := range results {
+            fmt.Println(*result)
+        }
+    }
 }

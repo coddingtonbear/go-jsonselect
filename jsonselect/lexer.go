@@ -65,7 +65,7 @@ var SCANNER = []scannerItem{
         S_TYPE,
     },
     scannerItem{
-        regexp.MustCompile(`\"([_a-zA-Z]|[^\0-\0177]|\\[^\s0-9a-fA-F])([_a-zA-Z0-9\-]|[^\u0000-\u0177]|(\\[^\s0-9a-fA-F]))*\"`),
+        regexp.MustCompile(`\"([_a-zA-Z]|\\[^\s0-9a-fA-F])([_a-zA-Z0-9\-]|(\\[^\s0-9a-fA-F]))*\"`),
         S_WORD,
     },
     scannerItem{
@@ -73,7 +73,7 @@ var SCANNER = []scannerItem{
         S_QUOTED_IDENTIFIER,
     },
     scannerItem{
-        regexp.MustCompile(`\.([_a-zA-Z]|[^\0-\0177]|\\[^\s0-9a-fA-F])([_a-zA-Z0-9\-]|[^\u0000-\u0177]|(\\[^\s0-9a-fA-F]))*`),
+        regexp.MustCompile(`\.([_a-zA-Z]|\\[^\s0-9a-fA-F])([_a-zA-Z0-9\-]|(\\[^\s0-9a-fA-F]))*`),
         S_IDENTIFIER,
     },
     scannerItem{
@@ -167,13 +167,12 @@ func lexNextToken(input string, scanners []scannerItem) (*token, int, error) {
 func Lex(input string, scanners []scannerItem) ([]*token, error) {
     var tokens []*token
     var start = 0
-    var token *token
-    var err error
     for start < len(input) {
-        token, start, err = lexNextToken(input[start:], scanners)
+        token, new_value, err := lexNextToken(input[start:], scanners)
         if err != nil {
             return nil, err
         }
+        start = start + new_value
         if token.typ != S_EMPTY {
             tokens = append(
                 tokens,
@@ -196,16 +195,14 @@ func getToken(typ tokenType, val string) token {
         case S_BOOL:
             result, _ := strconv.ParseBool(val)
             return token{typ, result}
-        case S_NUMBER: {
+        case S_NUMBER:
             result, _ := strconv.ParseInt(val, 10, 64)
             return token{typ, result}
-        }
         case S_EMPTY:
             return token{typ, " "}
-        case S_FLOAT: {
+        case S_FLOAT:
             result, _ := strconv.ParseFloat(val, 32)
             return token{typ, result}
-        }
         case S_WORD:
             return token{typ, val[1:len(val)-2]}
         default:
