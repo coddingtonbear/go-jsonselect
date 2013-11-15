@@ -9,26 +9,7 @@ import (
 
 type Parser struct {
     data *simplejson.Json
-}
-
-type jsonType string
-
-const (
-    J_STRING jsonType = "string"
-    J_NUMBER jsonType = "number"
-    J_OBJECT jsonType = "object"
-    J_ARRAY jsonType = "array"
-    J_BOOLEAN jsonType = "boolean"
-    J_NULL jsonType = "null"
-)
-
-type Node struct {
-    value interface{}
-    typ jsonType
-    parent *Node
-    parent_key string
-    idx int
-    siblings int
+    nodes []*Node
 }
 
 func CreateParser(body string) (*Parser, error) {
@@ -36,7 +17,9 @@ func CreateParser(body string) (*Parser, error) {
     if err != nil {
         return nil, err
     }
-    return &Parser{json}, nil
+    parser := Parser{json, nil}
+    parser.mapDocument()
+    return &parser, err
 }
 
 func (p *Parser) Parse(selector string) ([]*Node, error) {
