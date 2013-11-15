@@ -1,6 +1,7 @@
 package jsonselect
 
 import (
+    "fmt"
     "github.com/latestrevision/go-simplejson"
 )
 
@@ -26,7 +27,7 @@ type Node struct {
 
 func (p *Parser) findSubordinateNodes(jdoc *simplejson.Json, nodes []*Node, parent *Node, parent_key string, idx int, siblings int) []*Node {
     node := Node{}
-    node.parent = &parent
+    node.parent = parent
     if len(parent_key) > 0 {
         node.parent_key = parent_key
     }
@@ -37,38 +38,62 @@ func (p *Parser) findSubordinateNodes(jdoc *simplejson.Json, nodes []*Node, pare
         node.siblings = siblings
     }
 
+    string_value, err := jdoc.String()
+    if err == nil {
+        node.value = string_value
+        node.typ = J_STRING
+    }
+
+    int_value, err := jdoc.Int()
+    if err == nil {
+        node.value = int_value
+        node.typ = J_NUMBER
+    }
+
+    float_value, err := jdoc.Float64()
+    if err == nil {
+        node.value = float_value
+        node.typ = J_NUMBER
+    }
+
+    bool_value, err := jdoc.Bool()
+    if err == nil {
+        node.value = bool_value
+        node.typ = J_BOOLEAN
+    }
+
+    if jdoc.IsNil() {
+        node.value = nil
+        node.typ = J_NULL
+    }
+
     length, err := jdoc.ArrayLength()
     if err == nil {
         node.value, _ = jdoc.Array()
         node.typ = J_ARRAY
         for i := 0; i < length; i++ {
             element := jdoc.GetIndex(i)
-            value := strconv.FormatInt(int64(i), 10)
-            new_nodes := findSubordianteNodes(element, nodes, jdoc, "", i + 1, len(node.value))
-            for _, node := range new_nodes {
-                nodes = append(nodes, node)
-            }
+            nodes = p.findSubordinateNodes(element, nodes, &node, "", i + 1, length)
         }
     }
     data, err := jdoc.Map()
     if err == nil {
         node.value, _ = jdoc.Map()
-        node.typ = J_MAP
+        node.typ = J_OBJECT
         for key := range data {
             element := jdoc.Get(key)
-            new_nodes := findSubordianteNodes(element, nodes, jdoc, key, -1, -1)
-            for _, node := range new_nodes {
-                nodes = append(nodes, node)
-            }
+            nodes = p.findSubordinateNodes(element, nodes, &node, key, -1, -1)
         }
     }
 
-    nodes = append(nodes, node)
+    nodes = append(nodes, &node)
     return nodes
 }
 
-func (p *Parser) mapDocument() ([]*Node, error) {
+func (p *Parser) mapDocument() []*Node {
     var nodes []*Node
+    fmt.Println("B")
     nodes = p.findSubordinateNodes(p.data, nodes, nil, "", -1, -1)
-    return nodes, nil
+    fmt.Println("C")
+    return nodes
 }
