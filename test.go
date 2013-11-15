@@ -16,6 +16,7 @@ var json string = `
                     "city": null
                 }
             },
+            "age": 30
         },
         "stories": [
             {
@@ -27,6 +28,12 @@ var json string = `
                 "good": true
             }
         ],
+        "things": [
+            {
+                "type": "bike",
+                "title": "LHT"
+            }
+        ]
     }
 `
 
@@ -34,13 +41,18 @@ func main() {
     parser, err := jsonselect.CreateParser(json)
     if err != nil {
         fmt.Println(err)
+        return
     }
-    results, err := parser.Parse(".bin")
+    results, err := parser.Parse(".stories :nth-child(1)")
     if err != nil {
         fmt.Println(err)
     } else {
-        for _, result := range results {
-            fmt.Println(*result)
+        if len(results) > 0 {
+            for idx, result := range results {
+                fmt.Println(idx, *result)
+            }
+        } else {
+            fmt.Println("No matches")
         }
     }
 }

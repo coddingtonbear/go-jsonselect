@@ -1,7 +1,6 @@
 package jsonselect
 
 import (
-    "fmt"
     "github.com/latestrevision/go-simplejson"
 )
 
@@ -92,8 +91,6 @@ func (p *Parser) findSubordinateNodes(jdoc *simplejson.Json, nodes []*Node, pare
 
 func (p *Parser) mapDocument() []*Node {
     var nodes []*Node
-    fmt.Println("B")
     nodes = p.findSubordinateNodes(p.data, nodes, nil, "", -1, -1)
-    fmt.Println("C")
     return nodes
 }

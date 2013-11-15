@@ -1,6 +1,7 @@
 package jsonselect
 
 import (
+    "log"
     "errors"
     "regexp"
     "strconv"
@@ -42,6 +43,7 @@ func (p *Parser) selectorProduction(tokens []*token) ([]*Node, error) {
     var validators []func(*Node)bool
     var matched bool
     var value interface{}
+    var validator func(*Node)bool
 
     _, matched, _ = p.peek(tokens, S_TYPE)
     if matched {
@@ -54,6 +56,7 @@ func (p *Parser) selectorProduction(tokens []*token) ([]*Node, error) {
     _, matched, _ = p.peek(tokens, S_IDENTIFIER)
     if matched {
         value, tokens, _ = p.match(tokens, S_IDENTIFIER)
+        log.Print("Found ", S_IDENTIFIER, ": ", value)
         validators = append(
             validators,
             p.keyProduction(value),
@@ -62,6 +65,7 @@ func (p *Parser) selectorProduction(tokens []*token) ([]*Node, error) {
     _, matched, _ = p.peek(tokens, S_PCLASS)
     if matched {
         value, tokens, _ = p.match(tokens, S_PCLASS)
+        log.Print("Found ", S_PCLASS, ": ", value)
         validators = append(
             validators,
             p.pclassProduction(value),
@@ -70,19 +74,19 @@ func (p *Parser) selectorProduction(tokens []*token) ([]*Node, error) {
     _, matched, _ = p.peek(tokens, S_NTH_FUNC)
     if matched {
         value, tokens, _ = p.match(tokens, S_NTH_FUNC)
-        validators = append(
-            validators,
-            p.nthChildProduction(value, tokens),
-        )
+        log.Print("Found ", S_NTH_FUNC, ": ", value)
+        validator, tokens = p.nthChildProduction(value, tokens)
+        validators = append(validators, validator)
     }
     _, matched, _ = p.peek(tokens, S_PCLASS_FUNC)
     if matched {
         value, tokens, _ = p.match(tokens, S_PCLASS_FUNC)
-        validators = append(
-            validators,
-            p.pclassFuncProduction(value, tokens),
-        )
+        log.Print("Found ", S_PCLASS_FUNC, ": ", value)
+        validator, tokens = p.pclassFuncProduction(value, tokens)
+        validators = append(validators, validator)
     }
+
+    log.Print(len(validators), " validators found.")
 
     if len(validators) < 1 {
         return nil, errors.New("No selector recognized")
@@ -166,7 +170,7 @@ func (p *Parser) matchNodes(validators []func(*Node)bool) ([]*Node, error) {
 
 func (p *Parser) typeProduction(value interface{}) func(*Node)bool {
     return func(node *Node) bool {
-        return node.typ == value.(jsonType)
+        return string(node.typ) == value
     }
 }
 func (p *Parser) keyProduction(value interface{}) func(*Node)bool {
@@ -175,7 +179,7 @@ func (p *Parser) keyProduction(value interface{}) func(*Node)bool {
         if node.parent_key == ""{
             return false
         }
-        return node.parent_key == value.(string)
+        return string(node.parent_key) == value
     }
 }
 
@@ -207,7 +211,7 @@ func (p *Parser) pclassProduction(value interface{}) func(*Node)bool {
     }
 }
 
-func (p *Parser) nthChildProduction(value interface{}, tokens []*token) func(*Node)bool {
+func (p *Parser) nthChildProduction(value interface{}, tokens []*token) (func(*Node)bool, []*token) {
     nthChildRegexp := regexp.MustCompile(`^\s*\(\s*(?:([+\-]?)([0-9]*)n\s*(?:([+\-])\s*([0-9]))?|(odd|even)|([+\-]?[0-9]+))\s*\)`)
     args, tokens, _ := p.match(tokens, S_EXPR)
     var a int
@@ -270,10 +274,10 @@ func (p *Parser) nthChildProduction(value interface{}, tokens []*token) func(*No
         } else {
             return ((idx - b) % a) == 0 && (idx * a + b) >= 0
         }
-    }
+    }, tokens
 }
 
-func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token) func(*Node)bool {
+func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token) (func(*Node)bool, []*token) {
     sargs, tokens, _ := p.match(tokens, S_EXPR)
     pclass := value.(string)
 
@@ -281,7 +285,7 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token) func(*
         tokens, _ := Lex(sargs.(string), EXPRESSION_SCANNER)
         return func(node *Node)bool {
             return p.parseExpression(tokens, node).(bool)
-        }
+        }, tokens
     }
 
     args, _ := Lex(sargs.(string)[1:len(sargs.(string))-1], SCANNER)
@@ -300,21 +304,21 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token) func(*
         }
         return func(node *Node)bool {
             return nodeIsMemberOfList(node, ancestors)
-        }
+        }, tokens
     } else if pclass == "contains" {
         return func(node *Node)bool {
             return node.typ == J_STRING && strings.Count(node.value.(string), args[0].val.(string)) > 0
-        }
+        }, tokens
     } else if pclass == "val" {
         return func(node *Node)bool {
             return node.typ == J_STRING && node.value.(string) == args[0].val.(string)
-        }
+        }, tokens
     }
 
     // If we didn't find a known pclass, do not match anything.
     return func(node *Node)bool {
         return false
-    }
+    }, tokens
 }
 
 func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[string]func(interface{}, interface{})int) interface{} {
