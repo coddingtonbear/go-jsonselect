@@ -1,7 +1,6 @@
 package jsonselect
 
 import (
-    "log"
     "errors"
     "regexp"
     "strconv"
@@ -30,7 +29,8 @@ func (p *Parser) Parse(selector string) ([]*Node, error) {
         return nil, err
     }
 
-    results, err := p.selectorProduction(tokens)
+    documentMap := p.mapDocument()
+    results, err := p.selectorProduction(tokens, documentMap)
     if err != nil {
         return nil, err
     }
@@ -38,7 +38,7 @@ func (p *Parser) Parse(selector string) ([]*Node, error) {
     return results, nil
 }
 
-func (p *Parser) selectorProduction(tokens []*token) ([]*Node, error) {
+func (p *Parser) selectorProduction(tokens []*token, documentMap []*Node) ([]*Node, error) {
     var results []*Node
     var validators []func(*Node)bool
     var matched bool
@@ -56,7 +56,6 @@ func (p *Parser) selectorProduction(tokens []*token) ([]*Node, error) {
     _, matched, _ = p.peek(tokens, S_IDENTIFIER)
     if matched {
         value, tokens, _ = p.match(tokens, S_IDENTIFIER)
-        log.Print("Found ", S_IDENTIFIER, ": ", value)
         validators = append(
             validators,
             p.keyProduction(value),
@@ -65,7 +64,6 @@ func (p *Parser) selectorProduction(tokens []*token) ([]*Node, error) {
     _, matched, _ = p.peek(tokens, S_PCLASS)
     if matched {
         value, tokens, _ = p.match(tokens, S_PCLASS)
-        log.Print("Found ", S_PCLASS, ": ", value)
         validators = append(
             validators,
             p.pclassProduction(value),
@@ -74,25 +72,21 @@ func (p *Parser) selectorProduction(tokens []*token) ([]*Node, error) {
     _, matched, _ = p.peek(tokens, S_NTH_FUNC)
     if matched {
         value, tokens, _ = p.match(tokens, S_NTH_FUNC)
-        log.Print("Found ", S_NTH_FUNC, ": ", value)
         validator, tokens = p.nthChildProduction(value, tokens)
         validators = append(validators, validator)
     }
     _, matched, _ = p.peek(tokens, S_PCLASS_FUNC)
     if matched {
         value, tokens, _ = p.match(tokens, S_PCLASS_FUNC)
-        log.Print("Found ", S_PCLASS_FUNC, ": ", value)
-        validator, tokens = p.pclassFuncProduction(value, tokens)
+        validator, tokens = p.pclassFuncProduction(value, tokens, documentMap)
         validators = append(validators, validator)
     }
-
-    log.Print(len(validators), " validators found.")
 
     if len(validators) < 1 {
         return nil, errors.New("No selector recognized")
     }
 
-    results, err := p.matchNodes(validators)
+    results, err := p.matchNodes(validators, documentMap)
     if err != nil {
         return nil, err
     }
@@ -100,7 +94,7 @@ func (p *Parser) selectorProduction(tokens []*token) ([]*Node, error) {
     _, matched, _ = p.peek(tokens, S_OPER)
     if matched {
         value, tokens, _ = p.match(tokens, S_OPER)
-        rvals, err := p.selectorProduction(tokens)
+        rvals, err := p.selectorProduction(tokens, documentMap)
         if err != nil {
             return nil, err
         }
@@ -122,7 +116,7 @@ func (p *Parser) selectorProduction(tokens []*token) ([]*Node, error) {
                 return nil, errors.New("Unrecognized operator")
         }
     } else if len(tokens) > 0 {
-        rvals, err := p.selectorProduction(tokens)
+        rvals, err := p.selectorProduction(tokens, documentMap)
         if err != nil {
             return nil, err
         }
@@ -151,9 +145,9 @@ func (p *Parser) match(tokens []*token, typ tokenType) (interface{}, []*token, e
     return value, tokens, nil
 }
 
-func (p *Parser) matchNodes(validators []func(*Node)bool) ([]*Node, error) {
+func (p *Parser) matchNodes(validators []func(*Node)bool, documentMap []*Node) ([]*Node, error) {
     var matches []*Node
-    for _, node := range p.mapDocument() {
+    for _, node := range documentMap {
         var passed = true
         for _, validator := range validators {
             if !validator(node) {
@@ -277,7 +271,7 @@ func (p *Parser) nthChildProduction(value interface{}, tokens []*token) (func(*N
     }, tokens
 }
 
-func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token) (func(*Node)bool, []*token) {
+func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, documentMap []*Node) (func(*Node)bool, []*token) {
     sargs, tokens, _ := p.match(tokens, S_EXPR)
     pclass := value.(string)
 
@@ -296,7 +290,7 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token) (func(
                 token.typ = S_EMPTY
             }
         }
-        rvals, _ := p.selectorProduction(args)
+        rvals, _ := p.selectorProduction(args, documentMap)
 
         var ancestors []*Node
         for _, node := range rvals {
