@@ -3,6 +3,7 @@ package jsonselect
 import (
     "errors"
     "fmt"
+    "log"
     "regexp"
     "strings"
     "strconv"
@@ -49,7 +50,7 @@ var SCANNER = []scannerItem{
         S_EXPR,
     },
     scannerItem{
-        regexp.MustCompile(`[~*,>]`),
+        regexp.MustCompile(`[~*,> ]`),
         S_OPER,
     },
     scannerItem{
@@ -153,10 +154,27 @@ func lexNextToken(input string, scanners []scannerItem) (*token, int, error) {
             continue
         }
         if idx[0] == 0 {
+            log.Print(input[idx[0]:idx[1]])
+            if scanner.typ == S_EXPR && strings.Count(input[idx[0]:idx[1]], "(") != strings.Count(input[idx[0]:idx[1]], ")") {
+                terminated := false
+                var curr int
+                for curr = idx[1]; curr <= len(input[idx[0]:]); curr++ {
+                    if strings.Count(input[idx[0]:curr], "(") == strings.Count(input[idx[0]:curr], ")") {
+                        terminated = true
+                        break
+                    }
+                }
+                if terminated == false {
+                    return nil, len(input), errors.New(fmt.Sprintf("Unterminated expression: %s", input[idx[0]:curr-1]))
+                } else {
+                    idx[1] = curr
+                }
+            }
             token := getToken(
                 scanner.typ,
                 input[idx[0]:idx[1]],
             )
+            log.Print(token)
             return &token, idx[1], nil
         }
     }

@@ -13,7 +13,7 @@ type Parser struct {
     nodes []*Node
 }
 
-func CreateParser(body string) (*Parser, error) {
+func CreateParserFromString(body string) (*Parser, error) {
     json, err := simplejson.NewJson([]byte(body))
     if err != nil {
         return nil, err
@@ -21,6 +21,12 @@ func CreateParser(body string) (*Parser, error) {
     parser := Parser{json, nil}
     parser.mapDocument()
     return &parser, err
+}
+
+func CreateParser(json *simplejson.Json) (*Parser, error) {
+    parser := Parser{json, nil}
+    parser.mapDocument()
+    return &parser, nil
 }
 
 func (p *Parser) Parse(selector string) ([]*Node, error) {
