@@ -34,7 +34,7 @@ func main() {
     } else {
         if len(results) > 0 {
             for idx, result := range results {
-                fmt.Println(idx, *result)
+                fmt.Println(idx, result)
             }
         } else {
             fmt.Println("No matches")

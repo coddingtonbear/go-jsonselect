@@ -29,16 +29,24 @@ func CreateParser(json *simplejson.Json) (*Parser, error) {
     return &parser, nil
 }
 
-func (p *Parser) Parse(selector string) ([]*Node, error) {
+func (p *Parser) Parse(selector string) ([]interface{}, error) {
     tokens, err := Lex(selector, SCANNER)
     if err != nil {
         return nil, err
     }
 
     documentMap := p.mapDocument()
-    results, err := p.selectorProduction(tokens, documentMap)
+    nodes, err := p.selectorProduction(tokens, documentMap)
     if err != nil {
         return nil, err
+    }
+
+    var results []interface{}
+    for _, node := range nodes {
+        results = append(
+            results,
+            node.value,
+        )
     }
 
     return results, nil
