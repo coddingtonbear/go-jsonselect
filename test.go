@@ -23,6 +23,7 @@ var json string = `
 `
 
 func main() {
+    jsonselect.EnableLogger()
     parser, err := jsonselect.CreateParserFromString(json)
     if err != nil {
         fmt.Println(err)

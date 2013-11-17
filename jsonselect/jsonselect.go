@@ -2,7 +2,7 @@ package jsonselect
 
 import (
     "errors"
-    //"ioutil"
+    "io/ioutil"
     "log"
     "os"
     "regexp"
@@ -11,16 +11,19 @@ import (
     "github.com/latestrevision/go-simplejson"
 )
 
-var logger = log.New(
-    os.Stderr,
-    //ioutil.Discard,
-    "PARSER: ",
-    0,
-)
+var logger = log.New(ioutil.Discard, "jsonselect: ", 0,)
 
 type Parser struct {
     data *simplejson.Json
     nodes []*Node
+}
+
+func EnableLogger() {
+    logger = log.New(
+        os.Stderr,
+        "jsonselect: ",
+        0,
+    )
 }
 
 func CreateParserFromString(body string) (*Parser, error) {
@@ -34,6 +37,7 @@ func CreateParserFromString(body string) (*Parser, error) {
 }
 
 func CreateParser(json *simplejson.Json) (*Parser, error) {
+    log.SetOutput(ioutil.Discard)
     parser := Parser{json, nil}
     parser.mapDocument()
     return &parser, nil
@@ -49,6 +53,8 @@ func (p *Parser) evaluateSelector(selector string) ([]*Node, error) {
     if err != nil {
         return nil, err
     }
+
+    logger.Print(len(nodes), " matches found")
 
     return nodes, nil
 }
