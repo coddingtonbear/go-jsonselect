@@ -30,6 +30,6 @@ var json string = `
 `
 
 parser, _ := jsonselect.CreateParserFromString(json)
-results, _ := parser.Parse(".beers object:has(.rating:expr(x>70)))
-// Results map[title: beta rating: 90]
+results, _ := parser.GetValues(".beers object:has(.rating:expr(x>70)))
+// Results [map[title: beta rating: 90]]
 ```

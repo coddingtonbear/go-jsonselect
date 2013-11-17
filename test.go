@@ -28,7 +28,7 @@ func main() {
         fmt.Println(err)
         return
     }
-    results, err := parser.Parse(".stories object:has(.rating:expr(x>50))")
+    results, err := parser.GetValues(":has(.title:val(\"alpha\"))")
     if err != nil {
         fmt.Println(err)
     } else {

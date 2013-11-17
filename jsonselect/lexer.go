@@ -219,7 +219,7 @@ func getToken(typ tokenType, val string) token {
             result, _ := strconv.ParseFloat(val, 32)
             return token{typ, result}
         case S_WORD:
-            return token{typ, val[1:len(val)-2]}
+            return token{typ, val[1:len(val)-1]}
         default:
             return token{typ, val}
     }

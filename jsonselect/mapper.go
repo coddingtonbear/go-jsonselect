@@ -18,6 +18,7 @@ const (
 type Node struct {
     value interface{}
     typ jsonType
+    json *simplejson.Json
     parent *Node
     parent_key string
     idx int
@@ -27,6 +28,7 @@ type Node struct {
 func (p *Parser) findSubordinateNodes(jdoc *simplejson.Json, nodes []*Node, parent *Node, parent_key string, idx int, siblings int) []*Node {
     node := Node{}
     node.parent = parent
+    node.json = jdoc
     if len(parent_key) > 0 {
         node.parent_key = parent_key
     }
@@ -89,8 +91,7 @@ func (p *Parser) findSubordinateNodes(jdoc *simplejson.Json, nodes []*Node, pare
     return nodes
 }
 
-func (p *Parser) mapDocument() []*Node {
+func (p *Parser) mapDocument() {
     var nodes []*Node
-    nodes = p.findSubordinateNodes(p.data, nodes, nil, "", -1, -1)
-    return nodes
+    p.nodes = p.findSubordinateNodes(p.data, nodes, nil, "", -1, -1)
 }

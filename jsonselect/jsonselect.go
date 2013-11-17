@@ -2,10 +2,20 @@ package jsonselect
 
 import (
     "errors"
+    //"ioutil"
+    "log"
+    "os"
     "regexp"
     "strconv"
     "strings"
     "github.com/latestrevision/go-simplejson"
+)
+
+var logger = log.New(
+    os.Stderr,
+    //ioutil.Discard,
+    "PARSER: ",
+    0,
 )
 
 type Parser struct {
@@ -29,14 +39,42 @@ func CreateParser(json *simplejson.Json) (*Parser, error) {
     return &parser, nil
 }
 
-func (p *Parser) Parse(selector string) ([]interface{}, error) {
+func (p *Parser) evaluateSelector(selector string) ([]*Node, error) {
     tokens, err := Lex(selector, SCANNER)
     if err != nil {
         return nil, err
     }
 
-    documentMap := p.mapDocument()
-    nodes, err := p.selectorProduction(tokens, documentMap)
+    nodes, err := p.selectorProduction(tokens, p.nodes)
+    if err != nil {
+        return nil, err
+    }
+
+    return nodes, nil
+}
+
+func (p *Parser) GetJsonElements(selector string) ([]*simplejson.Json, error) {
+    nodes, err := p.evaluateSelector(selector)
+    if err != nil {
+        return nil, err
+    }
+
+    var results []*simplejson.Json
+    for _, node := range nodes {
+        results = append(
+            results,
+            node.json,
+        )
+    }
+    return results, nil
+}
+
+func (p *Parser) GetNodes(selector string) ([]*Node, error) {
+    return p.evaluateSelector(selector)
+}
+
+func (p *Parser) GetValues(selector string) ([]interface{}, error) {
+    nodes, err := p.evaluateSelector(selector)
     if err != nil {
         return nil, err
     }
@@ -177,13 +215,17 @@ func (p *Parser) matchNodes(validators []func(*Node)bool, documentMap []*Node) (
 }
 
 func (p *Parser) typeProduction(value interface{}) func(*Node)bool {
+    logger.Print("Creating typeProduction validator ", value)
     return func(node *Node) bool {
+        logger.Print("typeProduction ? ", node.typ, " == ", value)
         return string(node.typ) == value
     }
 }
 func (p *Parser) keyProduction(value interface{}) func(*Node)bool {
     // TODO: Verify this -- I'm not sure what this is supposed to match
+    logger.Print("Creating keyProduction validator ", value)
     return func(node *Node) bool {
+        logger.Print("keyProduction ? ", node.parent_key, " == ", value)
         if node.parent_key == ""{
             return false
         }
@@ -193,28 +235,36 @@ func (p *Parser) keyProduction(value interface{}) func(*Node)bool {
 
 func (p *Parser) pclassProduction(value interface{}) func(*Node)bool {
     pclass := value.(string)
+    logger.Print("Creating pclassProduction validator ", pclass)
     if pclass == "first-child" {
         return func(node *Node) bool {
+            logger.Print("pclassProduction first-child ? ", node.idx, " == 1")
             return node.idx == 1
         }
     } else if pclass == "last-child" {
         return func(node *Node) bool {
+            logger.Print("pclassProduction last-child ? ", node.siblings, " > 0 AND ", node.idx, " == ", node.siblings)
             return node.siblings > 0 && node.idx == node.siblings
         }
     } else if pclass == "only-child" {
         return func(node *Node) bool {
+            logger.Print("pclassProduction ony-child ? ", node.siblings, " == 1")
             return node.siblings == 1
         }
     } else if pclass == "root" {
         return func(node *Node) bool {
+            logger.Print("pclassProduction root ? ", node.parent, " == nil")
             return node.parent == nil
         }
     } else if pclass == "empty" {
         return func(node *Node) bool {
+            logger.Print("pclassProduction empty ? ", node.typ, " == ", J_ARRAY, " AND ", len(node.value.(string)), " < 1")
             return node.typ == J_ARRAY && len(node.value.(string)) < 1
         }
     }
+    logger.Print("Error: Unknown pclass: ", pclass)
     return func(node *Node) bool {
+        logger.Print("Asserting false due to failed pclassProduction")
         return false
     }
 }
@@ -227,6 +277,8 @@ func (p *Parser) nthChildProduction(value interface{}, tokens []*token) (func(*N
     var reverse bool = false
 
     pattern := nthChildRegexp.FindStringSubmatch(args.(string))
+
+    logger.Print("Creating nthChildProduction validator ", pattern)
 
     if pattern[5] != "" {
         a = 2
@@ -266,6 +318,7 @@ func (p *Parser) nthChildProduction(value interface{}, tokens []*token) (func(*N
     }
 
     return func(node *Node)bool {
+        logger.Print("nthChildProduction ? ", node.siblings, " == 0")
         if node.siblings == 0 {
             return false
         }
@@ -277,9 +330,11 @@ func (p *Parser) nthChildProduction(value interface{}, tokens []*token) (func(*N
             idx++
         }
 
+        logger.Print("nthChildProduction (continued) ? ", a, " == 0")
         if a == 0 {
             return b == idx
         } else {
+            logger.Print("nthChildProduction (continued) ? ", idx-b % a, " == 0 AND ", idx*a+b, " >= 0")
             return ((idx - b) % a) == 0 && (idx * a + b) >= 0
         }
     }, tokens
@@ -289,15 +344,25 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
     sargs, tokens, _ := p.match(tokens, S_EXPR)
     pclass := value.(string)
 
+    logger.Print("Creating pclassFuncProduction validator ", pclass)
+
     if pclass == "expr" {
         tokens, _ := Lex(sargs.(string), EXPRESSION_SCANNER)
         var tokens_to_return []*token
         return func(node *Node)bool {
-            return p.parseExpression(tokens, node) > 0
+            result := p.parseExpression(tokens, node)
+            logger.Print("pclassFuncProduction expr ? ", result, " > 0")
+            return  result > 0
         }, tokens_to_return
     }
 
-    args, _ := Lex(sargs.(string)[1:len(sargs.(string))-1], SCANNER)
+    lexString := sargs.(string)[1:len(sargs.(string))-1]
+    args, _ := Lex(lexString, SCANNER)
+
+    logger.Print("pclassFuncProduction lex results for [", lexString, "]: (follow)")
+    for i, arg := range args {
+        logger.Print("[", i, "]: ", arg)
+    }
 
     if pclass == "has" {
         for _, token := range args {
@@ -312,20 +377,25 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
             ancestors = append(ancestors, node.parent)
         }
         return func(node *Node)bool {
+            logger.Print("pclassFuncProduction expr ? ", &node, " ∈ ", ancestors)
             return nodeIsMemberOfList(node, ancestors)
         }, tokens
     } else if pclass == "contains" {
         return func(node *Node)bool {
+            logger.Print("pclassFuncProduction contains ? ", node.typ, " == ", J_STRING, " AND ", strings.Count(node.value.(string), args[0].val.(string)), " > 0")
             return node.typ == J_STRING && strings.Count(node.value.(string), args[0].val.(string)) > 0
         }, tokens
     } else if pclass == "val" {
         return func(node *Node)bool {
+            logger.Print("pclassFuncProduction val ? ", node.typ, " == ", J_STRING, " AND ", node.value.(string), " == ", args[0].val.(string))
             return node.typ == J_STRING && node.value.(string) == args[0].val.(string)
         }, tokens
     }
 
     // If we didn't find a known pclass, do not match anything.
+    logger.Print("Error: Unknown pclass: ", pclass)
     return func(node *Node)bool {
+        logger.Print("Asserting false due to failed pclassFuncProduction")
         return false
     }, tokens
 }
