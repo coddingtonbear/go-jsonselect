@@ -7,43 +7,28 @@ import (
 
 var json string = `
     {
-        "user": false,
-        "name": {
-            "first": "Adam",
-            "last": "Coddington",
-            "details": {
-                "address": {
-                    "city": null
-                }
-            },
-            "age": 30
-        },
         "stories": [
             {
                 "title": "alpha",
-                "good": false
+                "good": false,
+                "rating": 45
             },
             {
                 "title": "beta",
-                "good": true
-            }
-        ],
-        "things": [
-            {
-                "type": "bike",
-                "title": "LHT"
+                "good": true,
+                "rating": 90
             }
         ]
     }
 `
 
 func main() {
-    parser, err := jsonselect.CreateParser(json)
+    parser, err := jsonselect.CreateParserFromString(json)
     if err != nil {
         fmt.Println(err)
         return
     }
-    results, err := parser.Parse(".stories :nth-child(1)")
+    results, err := parser.Parse(".stories object:has(.rating:expr(x>50))")
     if err != nil {
         fmt.Println(err)
     } else {

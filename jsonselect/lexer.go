@@ -3,7 +3,6 @@ package jsonselect
 import (
     "errors"
     "fmt"
-    "log"
     "regexp"
     "strings"
     "strconv"
@@ -154,7 +153,6 @@ func lexNextToken(input string, scanners []scannerItem) (*token, int, error) {
             continue
         }
         if idx[0] == 0 {
-            log.Print(input[idx[0]:idx[1]])
             if scanner.typ == S_EXPR && strings.Count(input[idx[0]:idx[1]], "(") != strings.Count(input[idx[0]:idx[1]], ")") {
                 terminated := false
                 var curr int
@@ -174,7 +172,6 @@ func lexNextToken(input string, scanners []scannerItem) (*token, int, error) {
                 scanner.typ,
                 input[idx[0]:idx[1]],
             )
-            log.Print(token)
             return &token, idx[1], nil
         }
     }

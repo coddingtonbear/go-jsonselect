@@ -283,9 +283,10 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
 
     if pclass == "expr" {
         tokens, _ := Lex(sargs.(string), EXPRESSION_SCANNER)
+        var tokens_to_return []*token
         return func(node *Node)bool {
-            return p.parseExpression(tokens, node).(bool)
-        }, tokens
+            return p.parseExpression(tokens, node) > 0
+        }, tokens_to_return
     }
 
     args, _ := Lex(sargs.(string)[1:len(sargs.(string))-1], SCANNER)
@@ -321,13 +322,13 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
     }, tokens
 }
 
-func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[string]func(interface{}, interface{})int) interface{} {
+func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[string]func(interface{}, interface{})float64) float64 {
     var matched bool
-    var lhs interface{}
-    var rhs interface{}
+    var lhs float64
+    var rhs float64
 
     if len(tokens) < 1 {
-        return false
+        return -1
     }
 
     value, matched, _ := p.peek(tokens, S_PAREN)
@@ -340,13 +341,15 @@ func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[
     _, matched, _ = p.peek(tokens, S_PVAR)
     if matched {
         _, tokens, _ = p.match(tokens, S_PVAR)
-        lhs = node.value
+        lhs = getFloat64(node.value)
     } else {
         relevantTokens := []tokenType{S_STRING, S_BOOL, S_NIL, S_NUMBER}
         for _, ttype := range relevantTokens {
             _, matched, _ = p.peek(tokens, ttype)
             if matched {
-                lhs, tokens, _ = p.match(tokens, ttype)
+                var matchedValue interface{}
+                matchedValue, tokens, _ = p.match(tokens, ttype)
+                lhs = getFloat64(matchedValue)
                 break
             }
         }
@@ -366,48 +369,48 @@ func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[
     return comparatorFunction(lhs, rhs)
 }
 
-func (p *Parser) parseExpression(tokens []*token, node *Node) interface{} {
-    comparatorMap := map[string]func(lhs interface{}, rhs interface{})int{
-        "*": func(lhs interface{}, rhs interface{})int {
-            return lhs.(int) * rhs.(int)
+func (p *Parser) parseExpression(tokens []*token, node *Node) float64 {
+    comparatorMap := map[string]func(lhs interface{}, rhs interface{})float64{
+        "*": func(lhs interface{}, rhs interface{})float64 {
+            return getFloat64(lhs) * getFloat64(rhs)
         },
-        "/": func(lhs interface{}, rhs interface{})int {
-            return lhs.(int) / rhs.(int)
+        "/": func(lhs interface{}, rhs interface{})float64 {
+            return getFloat64(lhs) / getFloat64(rhs)
         },
-        "%": func(lhs interface{}, rhs interface{})int {
-            return lhs.(int) % rhs.(int)
+        "%": func(lhs interface{}, rhs interface{})float64 {
+            return float64(getInt32(lhs) % getInt32(rhs))
         },
-        "+": func(lhs interface{}, rhs interface{})int {
-            return lhs.(int) + rhs.(int)
+        "+": func(lhs interface{}, rhs interface{})float64 {
+            return getFloat64(lhs) + getFloat64(rhs)
         },
-        "-": func(lhs interface{}, rhs interface{})int {
-            return lhs.(int) - rhs.(int)
+        "-": func(lhs interface{}, rhs interface{})float64 {
+            return getFloat64(lhs) - getFloat64(rhs)
         },
-        "<=": func(lhs interface{}, rhs interface{})int {
-            if lhs.(int) <= rhs.(int) {
+        "<=": func(lhs interface{}, rhs interface{})float64 {
+            if getFloat64(lhs) <= getFloat64(rhs) {
                 return 1
             }
             return 0
         },
-        "<": func(lhs interface{}, rhs interface{})int {
-            if lhs.(int) < rhs.(int) {
+        "<": func(lhs interface{}, rhs interface{})float64 {
+            if getFloat64(lhs) < getFloat64(rhs) {
                 return 1
             }
             return 0
         },
-        ">=": func(lhs interface{}, rhs interface{})int {
-            if lhs.(int) > rhs.(int) {
+        ">=": func(lhs interface{}, rhs interface{})float64 {
+            if getFloat64(lhs) > getFloat64(rhs) {
                 return 1
             }
             return 0
         },
-        ">": func(lhs interface{}, rhs interface{})int {
-            if lhs.(int) > rhs.(int) {
+        ">": func(lhs interface{}, rhs interface{})float64 {
+            if getFloat64(lhs) > getFloat64(rhs) {
                 return 1
             }
             return 0
         },
-        "$=": func(lhs interface{}, rhs interface{})int {
+        "$=": func(lhs interface{}, rhs interface{})float64 {
             lhs_str := lhs.(string)
             rhs_str := rhs.(string)
             if strings.LastIndex(lhs_str, rhs_str) == len(lhs_str) - len(rhs_str) {
@@ -415,7 +418,7 @@ func (p *Parser) parseExpression(tokens []*token, node *Node) interface{} {
             }
             return 0
         },
-        "^=": func(lhs interface{}, rhs interface{})int {
+        "^=": func(lhs interface{}, rhs interface{})float64 {
             lhs_str := lhs.(string)
             rhs_str := rhs.(string)
             if strings.Index(lhs_str, rhs_str) == 0 {
@@ -423,7 +426,7 @@ func (p *Parser) parseExpression(tokens []*token, node *Node) interface{} {
             }
             return 0
         },
-        "*=": func(lhs interface{}, rhs interface{})int {
+        "*=": func(lhs interface{}, rhs interface{})float64 {
             lhs_str := lhs.(string)
             rhs_str := rhs.(string)
             if strings.Index(lhs_str, rhs_str) != 0 {
@@ -431,25 +434,25 @@ func (p *Parser) parseExpression(tokens []*token, node *Node) interface{} {
             }
             return 0
         },
-        "=": func(lhs interface{}, rhs interface{})int {
+        "=": func(lhs interface{}, rhs interface{})float64 {
             if lhs.(string) == rhs.(string) {
                 return 1
             }
             return 0
         },
-        "!=": func(lhs interface{}, rhs interface{})int {
+        "!=": func(lhs interface{}, rhs interface{})float64 {
             if lhs.(string) != rhs.(string) {
                 return 1
             }
             return 0
         },
-        "&&": func(lhs interface{}, rhs interface{})int {
+        "&&": func(lhs interface{}, rhs interface{})float64 {
             if lhs.(bool) && rhs.(bool) {
                 return 1
             }
             return 0
         },
-        "||": func(lhs interface{}, rhs interface{})int {
+        "||": func(lhs interface{}, rhs interface{})float64 {
             if lhs.(bool) || rhs.(bool) {
                 return 1
             }
