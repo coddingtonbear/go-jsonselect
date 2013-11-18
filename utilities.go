@@ -109,6 +109,10 @@ func getInt32(in interface{}) int32 {
 }
 
 func getJsonString(in interface{}) string {
+    as_string, ok := in.(string)
+    if ok {
+        return as_string
+    }
     marshaled_result, err := json.Marshal(in)
     if err != nil {
         log.Print("Error transforming ", in, " into JSON string")

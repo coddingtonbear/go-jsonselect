@@ -224,6 +224,8 @@ func getToken(typ tokenType, val string) token {
             return token{typ, result}
         case S_WORD:
             return token{typ, val[1:len(val)-1]}
+        case S_STRING:
+            return token{S_STRING, val[1:len(val)-1]}
         default:
             return token{typ, val}
     }

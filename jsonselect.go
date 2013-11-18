@@ -570,7 +570,7 @@ func (p *Parser) parseExpression(tokens []*token, node *Node) exprElement {
         "$=": func(lhs exprElement, rhs exprElement)exprElement {
             lhs_str := getJsonString(lhs.value)
             rhs_str := getJsonString(rhs.value)
-            if strings.LastIndex(lhs_str, rhs_str) == len(lhs_str) - len(rhs_str) {
+            if strings.HasSuffix(lhs_str, rhs_str) {
                 return exprElement{true, J_BOOLEAN}
             }
             return exprElement{false, J_BOOLEAN}
