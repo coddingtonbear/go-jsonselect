@@ -25,6 +25,11 @@ type Node struct {
     siblings int
 }
 
+func (p *Parser) getFlooredDocumentMap(node *Node) []*Node {
+    var newMap []*Node
+    return p.findSubordinateNodes(node.json, newMap, nil, "", -1, -1)
+}
+
 func (p *Parser) findSubordinateNodes(jdoc *simplejson.Json, nodes []*Node, parent *Node, parent_key string, idx int, siblings int) []*Node {
     node := Node{}
     node.parent = parent

@@ -2,6 +2,7 @@ package jsonselect
 
 import (
     "encoding/json"
+    "fmt"
     "log"
     "strconv"
 )
@@ -13,7 +14,7 @@ type exprElement struct {
 
 func nodeIsMemberOfList(needle *Node, haystack []*Node) bool {
     for _, element := range haystack {
-        if element == needle {
+        if element.json == needle.json {
             return true
         }
     }
@@ -137,4 +138,12 @@ func exprElementIsTruthy(e exprElement) bool {
 
 func exprElementsMatch(lhs exprElement, rhs exprElement) bool {
     return lhs.typ == rhs.typ
+}
+
+func getFormattedNodeArray(nodes []*Node) []string {
+    var formatted []string
+    for _, node := range nodes {
+        formatted = append(formatted, fmt.Sprint(*node))
+    }
+    return formatted
 }

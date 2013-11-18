@@ -49,7 +49,7 @@ func (p *Parser) evaluateSelector(selector string) ([]*Node, error) {
         return nil, err
     }
 
-    nodes, err := p.selectorProduction(tokens, p.nodes)
+    nodes, err := p.selectorProduction(tokens, p.nodes, 1)
     if err != nil {
         return nil, err
     }
@@ -96,12 +96,13 @@ func (p *Parser) GetValues(selector string) ([]interface{}, error) {
     return results, nil
 }
 
-func (p *Parser) selectorProduction(tokens []*token, documentMap []*Node) ([]*Node, error) {
+func (p *Parser) selectorProduction(tokens []*token, documentMap []*Node, recursionDepth int) ([]*Node, error) {
     var results []*Node
     var validators []func(*Node)bool
     var matched bool
     var value interface{}
     var validator func(*Node)bool
+    logger.Println("selectorProduction(", recursionDepth, ") starting with ", tokens[0], " - ", len(tokens), " tokens remaining.")
 
     _, matched, _ = p.peek(tokens, S_TYPE)
     if matched {
@@ -154,16 +155,20 @@ func (p *Parser) selectorProduction(tokens []*token, documentMap []*Node) ([]*No
     if err != nil {
         return nil, err
     }
+    logger.Println("Applying ", len(validators), " validators to document resulted in ", len(results), " matches")
 
     _, matched, _ = p.peek(tokens, S_OPER)
     if matched {
         value, tokens, _ = p.match(tokens, S_OPER)
-        rvals, err := p.selectorProduction(tokens, documentMap)
+        logger.Print("Recursing selectorProduction(", recursionDepth, ") via operator ", value, " starting with ", tokens[0], " ;", len(tokens), " tokens remaining")
+        rvals, err := p.selectorProduction(tokens, documentMap, recursionDepth+1)
+        logger.Print("Recursion completed; returned control to selectorProduction(", recursionDepth, ") via operator ", value, " with ", len(rvals), " matches.")
         if err != nil {
             return nil, err
         }
         switch value {
             case ",":
+                logger.Print("(", recursionDepth, ") Operator ',': ", len(results), " => ", len(results) + len(rvals))
                 for _, val := range rvals {
                     // TODO: This is quite slow
                     // it seems like it's probably quite easy to expand
@@ -171,22 +176,31 @@ func (p *Parser) selectorProduction(tokens []*token, documentMap []*Node) ([]*No
                     results = append(results, val)
                 }
             case ">":
+                originalLength := len(results)
                 results = parents(results, rvals)
+                logger.Print("(", recursionDepth, ") Operator '>': ", originalLength, " => ", len(results))
             case "~":
+                originalLength := len(results)
                 results = siblings(results, rvals)
+                logger.Print("(", recursionDepth, ") Operator '~': ", originalLength, " => ", len(results))
             case " ":
+                originalLength := len(results)
                 results = ancestors(results, rvals)
+                logger.Print("(", recursionDepth, ") Operator ' ': ", originalLength, " => ", len(results))
             default:
                 return nil, errors.New("Unrecognized operator")
         }
     } else if len(tokens) > 0 {
-        rvals, err := p.selectorProduction(tokens, documentMap)
+        logger.Print("Recursing selectorProduction(", recursionDepth, ") for excess tokens starting with ", tokens[0], " ;", len(tokens), " tokens remaining")
+        rvals, err := p.selectorProduction(tokens, documentMap, recursionDepth+1)
+        logger.Print("Recursion completed; returned control to selectorProduction(", recursionDepth, ") for excess tokens with ", len(rvals), " matches.")
         if err != nil {
             return nil, err
         }
         results = ancestors(results, rvals)
     }
 
+    logger.Println("selectorProduction(", recursionDepth, ") returning ", len(results), " matches.")
     return results, nil
 }
 
@@ -220,6 +234,7 @@ func (p *Parser) matchNodes(validators []func(*Node)bool, documentMap []*Node) (
             }
         }
         if passed {
+            logger.Print("MATCHED: ", node)
             matches = append(matches, node)
         }
     }
@@ -409,19 +424,16 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
     }
 
     if pclass == "has" {
-        for _, token := range args {
-            if token.val == ">" {
-                token.typ = S_EMPTY
-            }
-        }
-        rvals, _ := p.selectorProduction(args, documentMap)
-
-        var ancestors []*Node
-        for _, node := range rvals {
-            ancestors = append(ancestors, node.parent)
-        }
         return func(node *Node)bool {
-            logger.Print("pclassFuncProduction expr ? ", &node, " ∈ ", ancestors)
+            newMap := p.getFlooredDocumentMap(node)
+            logger.Print("pclassFuncProduction recursing into selectorProduction(-100) starting with ", args[0], "; ", len(args), " tokens remaining.")
+            rvals, _ := p.selectorProduction(args, newMap, -100)
+            logger.Print("pclassFuncProduction resursion completed with ", len(rvals), " results.")
+            var ancestors []*Node
+            for _, node := range rvals {
+                ancestors = append(ancestors, node.parent)
+            }
+            logger.Print("pclassFuncProduction has ? ", node, " ∈ ", getFormattedNodeArray(ancestors))
             return nodeIsMemberOfList(node, ancestors)
         }, tokens
     } else if pclass == "contains" {
