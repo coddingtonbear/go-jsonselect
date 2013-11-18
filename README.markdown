@@ -9,9 +9,10 @@ Usage
 -----
 
 ```golang
+package main
 
 import (
-    "jsonselect"
+    "github.com/latestrevision/go-jsonselect"
 )
 
 var json string = `
