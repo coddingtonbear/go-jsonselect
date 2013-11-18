@@ -139,6 +139,12 @@ func (p *Parser) selectorProduction(tokens []*token, documentMap []*Node) ([]*No
         validator, tokens = p.pclassFuncProduction(value, tokens, documentMap)
         validators = append(validators, validator)
     }
+    result, matched, _ := p.peek(tokens, S_OPER)
+    if matched && result.(string) == "*" {
+        value, tokens, _ = p.match(tokens, S_OPER)
+        validator = p.universalProduction(value)
+        validators = append(validators, validator)
+    }
 
     if len(validators) < 1 {
         return nil, errors.New("No selector recognized")
@@ -236,6 +242,22 @@ func (p *Parser) keyProduction(value interface{}) func(*Node)bool {
             return false
         }
         return string(node.parent_key) == value
+    }
+}
+
+func (p *Parser) universalProduction(value interface{}) func(*Node)bool {
+    operator := value.(string)
+    if operator == "*" {
+        return func(node *Node) bool {
+            logger.Print("universalProduction ? true")
+            return true
+        }
+    } else {
+        logger.Print("Error: Unexpected operator: ", operator)
+        return func(node *Node) bool {
+            logger.Print("Asserting false due to failed universalProduction")
+            return false
+        }
     }
 }
 

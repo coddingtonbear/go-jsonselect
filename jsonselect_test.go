@@ -2,6 +2,7 @@ package jsonselect
 
 import (
     "io/ioutil"
+    "reflect"
     "strings"
     "testing"
     "github.com/latestrevision/go-simplejson"
@@ -48,17 +49,20 @@ func runTestsInDirectory(t *testing.T, baseDirectory string) {
                 stringTemporary = stringTemporary + str
                 // Try to parse -- if it works, we have the whole object
                 if strings.Index(stringTemporary, "{") == 0 {
-                    doc, err := simplejson.NewJson([]byte(stringTemporary))
-                    if err != nil {
-                        encoded, _ := doc.Encode()
-                        actualOutput = append(actualOutput, string(encoded))
-                        stringTemporary = ""
+                    if strings.Count(stringTemporary, "{") != strings.Count(stringTemporary, "}") {
+                        continue
                     }
-                } else {
-                    if len(stringTemporary) > 0 {
-                        actualOutput = append(actualOutput, stringTemporary)
-                        stringTemporary = ""
+                    actualOutput = append(actualOutput, stringTemporary)
+                    stringTemporary = ""
+                } else if strings.Index(stringTemporary, "[") == 0 {
+                    if strings.Count(stringTemporary, "[") != strings.Count(stringTemporary, "]") {
+                        continue
                     }
+                    actualOutput = append(actualOutput, stringTemporary)
+                    stringTemporary = ""
+                } else if len(stringTemporary) > 0 {
+                    actualOutput = append(actualOutput, stringTemporary)
+                    stringTemporary = ""
                 }
             }
             testOutput[name[0:len(name)-len(".output")]] = actualOutput
@@ -75,30 +79,76 @@ func runTestsInDirectory(t *testing.T, baseDirectory string) {
     for testName := range testSelectors {
         parser, err := getTestParser(testDocuments, testName)
         if err != nil {
-            t.Error("Unable to find testing document for ", testName)
+            t.Error("Test ", testName, "failed: ", err)
         }
         selectorString := testSelectors[testName]
         expectedOutput := testOutput[testName]
 
         results, err := parser.GetJsonElements(selectorString)
         if err != nil {
-            t.Error("Error encountered while finding matches ", err)
+            t.Error("Test ", testName, "failed: ", err)
         }
         var stringResults []string
         for _, result := range results {
             encoded, err := result.Encode()
             if err != nil {
-                t.Error("Error encoding result '", result, "' in to JSON")
+                t.Error("Test ", testName, "failed: ", err)
             }
             stringResults = append(stringResults, string(encoded))
         }
 
         if len(stringResults) != len(expectedOutput) {
-            t.Error("Test ", testName, " failed due to number of results being mismatched: [Actual] ", stringResults, " (", len(stringResults), ") != [Expected] ", expectedOutput, " (", len(expectedOutput), ")")
+            t.Error("Test ", testName, " failed due to number of results being mismatched; ", len(stringResults), " != ", len(expectedOutput), ": [Actual] ", stringResults, " != [Expected] ", expectedOutput)
         } else {
+            var matched bool = true
             for idx, result := range stringResults {
                 expectedEncoded := expectedOutput[idx]
-                if expectedEncoded != result {
+                // If the string begins with {, let's load it using simplejson,
+                // convert it to a map, and use reflection to see if they do match.
+                if strings.Index(strings.TrimSpace(expectedEncoded), "{") == 0 {
+                    expectedJson, err := simplejson.NewJson([]byte(expectedEncoded))
+                    if err != nil {
+                        t.Error(
+                            "Test ", testName, " failed due to a JSON decoding error while decoding expectation: ", err,
+                        )
+                    }
+                    resultJson, err := simplejson.NewJson([]byte(result))
+                    if err != nil {
+                        t.Error(
+                            "Test ", testName, " failed due to a JSON decoding error while decoding result: ", err,
+                        )
+                    }
+                    result := reflect.DeepEqual(
+                        expectedJson.MustMap(),
+                        resultJson.MustMap(),
+                    )
+                    if !result {
+                        matched = false
+                    }
+                } else if strings.Index(strings.TrimSpace(expectedEncoded), "[") == 0 {
+                    expectedJson, err := simplejson.NewJson([]byte(expectedEncoded))
+                    if err != nil {
+                        t.Error(
+                            "Test ", testName, " failed due to a JSON decoding error while decoding expectation: ", err,
+                        )
+                    }
+                    resultJson, err := simplejson.NewJson([]byte(result))
+                    if err != nil {
+                        t.Error(
+                            "Test ", testName, " failed due to a JSON decoding error while decoding result: ", err,
+                        )
+                    }
+                    result := reflect.DeepEqual(
+                        expectedJson.MustArray(),
+                        resultJson.MustArray(),
+                    )
+                    if !result {
+                        matched = false
+                    }
+                } else if expectedEncoded != result {
+                    matched = false
+                }
+                if !matched {
                     t.Error(
                         "Test ", testName, " failed on item #", idx, ": [Actual] ", result, " != [Expected] ", expectedEncoded,
                     )
