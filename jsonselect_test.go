@@ -43,6 +43,10 @@ func runTestsInDirectory(t *testing.T, baseDirectory string) {
                 t.Error("Error encountered while reading ", name, ": ", err)
                 continue
             }
+            if strings.HasPrefix(string(output_document), "Error") {
+                // We won't be handling errors in the same way.
+                continue
+            }
             var actualOutput []string
             var stringTemporary string
             for _, str := range strings.Split(string(output_document), "\n") {
@@ -76,10 +80,13 @@ func runTestsInDirectory(t *testing.T, baseDirectory string) {
         }
     }
 
-    for testName := range testSelectors {
+    for testName := range testOutput {
+        var passed bool = true
+        t.Log("Running test ", testName)
         parser, err := getTestParser(testDocuments, testName)
         if err != nil {
             t.Error("Test ", testName, "failed: ", err)
+            passed = false
         }
         selectorString := testSelectors[testName]
         expectedOutput := testOutput[testName]
@@ -87,18 +94,21 @@ func runTestsInDirectory(t *testing.T, baseDirectory string) {
         results, err := parser.GetJsonElements(selectorString)
         if err != nil {
             t.Error("Test ", testName, "failed: ", err)
+            passed = false
         }
         var stringResults []string
         for _, result := range results {
             encoded, err := result.Encode()
             if err != nil {
                 t.Error("Test ", testName, "failed: ", err)
+                passed = false
             }
             stringResults = append(stringResults, string(encoded))
         }
 
         if len(stringResults) != len(expectedOutput) {
             t.Error("Test ", testName, " failed due to number of results being mismatched; ", len(stringResults), " != ", len(expectedOutput), ": [Actual] ", stringResults, " != [Expected] ", expectedOutput)
+            passed = false
         } else {
             var matched bool = true
             for idx, result := range stringResults {
@@ -111,12 +121,14 @@ func runTestsInDirectory(t *testing.T, baseDirectory string) {
                         t.Error(
                             "Test ", testName, " failed due to a JSON decoding error while decoding expectation: ", err,
                         )
+                        passed = false
                     }
                     resultJson, err := simplejson.NewJson([]byte(result))
                     if err != nil {
                         t.Error(
                             "Test ", testName, " failed due to a JSON decoding error while decoding result: ", err,
                         )
+                        passed = false
                     }
                     result := reflect.DeepEqual(
                         expectedJson.MustMap(),
@@ -131,12 +143,14 @@ func runTestsInDirectory(t *testing.T, baseDirectory string) {
                         t.Error(
                             "Test ", testName, " failed due to a JSON decoding error while decoding expectation: ", err,
                         )
+                        passed = false
                     }
                     resultJson, err := simplejson.NewJson([]byte(result))
                     if err != nil {
                         t.Error(
                             "Test ", testName, " failed due to a JSON decoding error while decoding result: ", err,
                         )
+                        passed = false
                     }
                     result := reflect.DeepEqual(
                         expectedJson.MustArray(),
@@ -152,8 +166,12 @@ func runTestsInDirectory(t *testing.T, baseDirectory string) {
                     t.Error(
                         "Test ", testName, " failed on item #", idx, ": [Actual] ", result, " != [Expected] ", expectedEncoded,
                     )
+                    passed = false
                 }
             }
+        }
+        if passed {
+            t.Log("Test ", testName, " PASSED")
         }
     }
 }
@@ -166,6 +184,6 @@ func TestLevel2(t *testing.T) {
     runTestsInDirectory(t, "./conformance_tests/level_2/")
 }
 
-//func xTestLevel3(t *testing.T) {
-//    runTestsInDirectory(t, "./conformance_tests/level_3/")
-//}
+func TestLevel3(t *testing.T) {
+    runTestsInDirectory(t, "./conformance_tests/level_3/")
+}

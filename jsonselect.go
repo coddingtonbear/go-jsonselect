@@ -395,8 +395,8 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
         var tokens_to_return []*token
         return func(node *Node)bool {
             result := p.parseExpression(tokens, node)
-            logger.Print("pclassFuncProduction expr ? ", result, " > 0")
-            return  result > 0
+            logger.Print("pclassFuncProduction expr ? ", result)
+            return exprElementIsTruthy(result)
         }, tokens_to_return
     }
 
@@ -431,8 +431,10 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
         }, tokens
     } else if pclass == "val" {
         return func(node *Node)bool {
-            logger.Print("pclassFuncProduction val ? ", node.typ, " == ", J_STRING, " AND ", node.value.(string), " == ", args[0].val.(string))
-            return node.typ == J_STRING && node.value.(string) == args[0].val.(string)
+            lhsString := getJsonString(node.value)
+            rhsString := getJsonString(args[0].val)
+            logger.Print("pclassFuncProduction val ? ", lhsString, " == ", rhsString)
+            return lhsString == rhsString
         }, tokens
     }
 
@@ -444,13 +446,13 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
     }, tokens
 }
 
-func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[string]func(interface{}, interface{})float64) float64 {
+func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[string]func(exprElement, exprElement)exprElement) exprElement {
     var matched bool
-    var lhs float64
-    var rhs float64
+    var lhs exprElement
+    var rhs exprElement
 
     if len(tokens) < 1 {
-        return -1
+        return exprElement{false, J_BOOLEAN}
     }
 
     value, matched, _ := p.peek(tokens, S_PAREN)
@@ -463,7 +465,7 @@ func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[
     _, matched, _ = p.peek(tokens, S_PVAR)
     if matched {
         _, tokens, _ = p.match(tokens, S_PVAR)
-        lhs = getFloat64(node.value)
+        lhs = exprElement{node.value, node.typ}
     } else {
         relevantTokens := []tokenType{S_STRING, S_BOOL, S_NIL, S_NUMBER}
         for _, ttype := range relevantTokens {
@@ -471,8 +473,19 @@ func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[
             if matched {
                 var matchedValue interface{}
                 matchedValue, tokens, _ = p.match(tokens, ttype)
-                lhs = getFloat64(matchedValue)
-                break
+                if matchedValue != nil {
+                    jType := J_STRING
+                    if ttype == S_BOOL {
+                        jType = J_BOOLEAN
+                    } else if ttype == S_NIL {
+                        jType = J_NULL
+                    } else if ttype == S_NUMBER {
+                        jType = J_NUMBER
+                    }
+                    lhs = exprElement{matchedValue, jType}
+                } else {
+                    lhs = exprElement{nil, J_NULL}
+                }
             }
         }
     }
@@ -488,97 +501,109 @@ func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[
     comparatorFunction := cmap[binop.(string)]
     rhs = p.evaluateParsedExpression(tokens, node, cmap)
 
+    if ! exprElementsMatch(lhs, rhs) {
+        return exprElement{false, J_BOOLEAN}
+    }
     return comparatorFunction(lhs, rhs)
 }
 
-func (p *Parser) parseExpression(tokens []*token, node *Node) float64 {
-    comparatorMap := map[string]func(lhs interface{}, rhs interface{})float64{
-        "*": func(lhs interface{}, rhs interface{})float64 {
-            return getFloat64(lhs) * getFloat64(rhs)
+func (p *Parser) parseExpression(tokens []*token, node *Node) exprElement {
+    comparatorMap := map[string]func(lhs exprElement, rhs exprElement)exprElement{
+        "*": func(lhs exprElement, rhs exprElement)exprElement {
+            value := getFloat64(lhs.value) * getFloat64(rhs.value)
+            return exprElement{value, J_NUMBER}
         },
-        "/": func(lhs interface{}, rhs interface{})float64 {
-            return getFloat64(lhs) / getFloat64(rhs)
+        "/": func(lhs exprElement, rhs exprElement)exprElement {
+            value := getFloat64(lhs.value) / getFloat64(rhs.value)
+            return exprElement{value, J_NUMBER}
         },
-        "%": func(lhs interface{}, rhs interface{})float64 {
-            return float64(getInt32(lhs) % getInt32(rhs))
+        "%": func(lhs exprElement, rhs exprElement)exprElement {
+            value := float64(getInt32(lhs.value) % getInt32(rhs.value))
+            return exprElement{value, J_NUMBER}
         },
-        "+": func(lhs interface{}, rhs interface{})float64 {
-            return getFloat64(lhs) + getFloat64(rhs)
+        "+": func(lhs exprElement, rhs exprElement)exprElement {
+            value := getFloat64(lhs.value) + getFloat64(rhs.value)
+            return exprElement{value, J_NUMBER}
         },
-        "-": func(lhs interface{}, rhs interface{})float64 {
-            return getFloat64(lhs) - getFloat64(rhs)
+        "-": func(lhs exprElement, rhs exprElement)exprElement {
+            value := getFloat64(lhs.value) - getFloat64(rhs.value)
+            return exprElement{value, J_NUMBER}
         },
-        "<=": func(lhs interface{}, rhs interface{})float64 {
-            if getFloat64(lhs) <= getFloat64(rhs) {
-                return 1
+        "<=": func(lhs exprElement, rhs exprElement)exprElement {
+            if getFloat64(lhs.value) <= getFloat64(rhs.value) {
+                return exprElement{true, J_BOOLEAN}
             }
-            return 0
+            return exprElement{false, J_BOOLEAN}
         },
-        "<": func(lhs interface{}, rhs interface{})float64 {
-            if getFloat64(lhs) < getFloat64(rhs) {
-                return 1
+        "<": func(lhs exprElement, rhs exprElement)exprElement {
+            if getFloat64(lhs.value) < getFloat64(rhs.value) {
+                return exprElement{true, J_BOOLEAN}
             }
-            return 0
+            return exprElement{false, J_BOOLEAN}
         },
-        ">=": func(lhs interface{}, rhs interface{})float64 {
-            if getFloat64(lhs) > getFloat64(rhs) {
-                return 1
+        ">=": func(lhs exprElement, rhs exprElement)exprElement {
+            if getFloat64(lhs.value) > getFloat64(rhs.value) {
+                return exprElement{true, J_BOOLEAN}
             }
-            return 0
+            return exprElement{false, J_BOOLEAN}
         },
-        ">": func(lhs interface{}, rhs interface{})float64 {
-            if getFloat64(lhs) > getFloat64(rhs) {
-                return 1
+        ">": func(lhs exprElement, rhs exprElement)exprElement {
+            if getFloat64(lhs.value) > getFloat64(rhs.value) {
+                return exprElement{true, J_BOOLEAN}
             }
-            return 0
+            return exprElement{false, J_BOOLEAN}
         },
-        "$=": func(lhs interface{}, rhs interface{})float64 {
-            lhs_str := lhs.(string)
-            rhs_str := rhs.(string)
+        "$=": func(lhs exprElement, rhs exprElement)exprElement {
+            lhs_str := getJsonString(lhs.value)
+            rhs_str := getJsonString(rhs.value)
             if strings.LastIndex(lhs_str, rhs_str) == len(lhs_str) - len(rhs_str) {
-                return 1
+                return exprElement{true, J_BOOLEAN}
             }
-            return 0
+            return exprElement{false, J_BOOLEAN}
         },
-        "^=": func(lhs interface{}, rhs interface{})float64 {
-            lhs_str := lhs.(string)
-            rhs_str := rhs.(string)
+        "^=": func(lhs exprElement, rhs exprElement)exprElement {
+            lhs_str := getJsonString(lhs.value)
+            rhs_str := getJsonString(rhs.value)
             if strings.Index(lhs_str, rhs_str) == 0 {
-                return 1
+                return exprElement{true, J_BOOLEAN}
             }
-            return 0
+            return exprElement{false, J_BOOLEAN}
         },
-        "*=": func(lhs interface{}, rhs interface{})float64 {
-            lhs_str := lhs.(string)
-            rhs_str := rhs.(string)
-            if strings.Index(lhs_str, rhs_str) != 0 {
-                return 1
+        "*=": func(lhs exprElement, rhs exprElement)exprElement {
+            lhs_str := getJsonString(lhs.value)
+            rhs_str := getJsonString(rhs.value)
+            if strings.Index(lhs_str, rhs_str) != -1 {
+                return exprElement{true, J_BOOLEAN}
             }
-            return 0
+            return exprElement{false, J_BOOLEAN}
         },
-        "=": func(lhs interface{}, rhs interface{})float64 {
-            if lhs.(string) == rhs.(string) {
-                return 1
+        "=": func(lhs exprElement, rhs exprElement)exprElement {
+            lhs_string := getJsonString(lhs.value)
+            rhs_string := getJsonString(rhs.value)
+            if lhs_string == rhs_string {
+                return exprElement{true, J_BOOLEAN}
             }
-            return 0
+            return exprElement{false, J_BOOLEAN}
         },
-        "!=": func(lhs interface{}, rhs interface{})float64 {
-            if lhs.(string) != rhs.(string) {
-                return 1
+        "!=": func(lhs exprElement, rhs exprElement)exprElement {
+            lhs_string := getJsonString(lhs.value)
+            rhs_string := getJsonString(rhs.value)
+            if lhs_string != rhs_string {
+                return exprElement{true, J_BOOLEAN}
             }
-            return 0
+            return exprElement{false, J_BOOLEAN}
         },
-        "&&": func(lhs interface{}, rhs interface{})float64 {
-            if lhs.(bool) && rhs.(bool) {
-                return 1
+        "&&": func(lhs exprElement, rhs exprElement)exprElement {
+            if lhs.value.(bool) && rhs.value.(bool) {
+                return exprElement{true, J_BOOLEAN}
             }
-            return 0
+            return exprElement{false, J_BOOLEAN}
         },
-        "||": func(lhs interface{}, rhs interface{})float64 {
-            if lhs.(bool) || rhs.(bool) {
-                return 1
+        "||": func(lhs exprElement, rhs exprElement)exprElement {
+            if lhs.value.(bool) || rhs.value.(bool) {
+                return exprElement{true, J_BOOLEAN}
             }
-            return 0
+            return exprElement{false, J_BOOLEAN}
         },
     }
     return p.evaluateParsedExpression(tokens, node, comparatorMap)

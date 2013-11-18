@@ -1,9 +1,15 @@
 package jsonselect
 
 import (
+    "encoding/json"
     "log"
     "strconv"
 )
+
+type exprElement struct {
+    value interface{}
+    typ jsonType
+}
 
 func nodeIsMemberOfList(needle *Node, haystack []*Node) bool {
     for _, element := range haystack {
@@ -72,27 +78,63 @@ func getFloat64(in interface{}) float64 {
     }
     as_int, ok := in.(int64)
     if ok {
-        return float64(as_int)
+        value := float64(as_int)
+        return value
     }
     as_string, ok := in.(string)
     if ok {
         parsed_float_string, err := strconv.ParseFloat(as_string, 64)
         if err == nil {
-            return parsed_float_string
+            value := parsed_float_string
+            return value
         }
         parsed_int_string, err := strconv.ParseInt(as_string, 10, 32)
         if err == nil {
-            return float64(parsed_int_string)
+            value := float64(parsed_int_string)
+            return value
         }
     }
+    result := float64(-1)
     log.Print("Error transforming ", in, " into Float64")
-    return -1
+    return result
 }
 
 func getInt32(in interface{}) int32 {
     value := int32(getFloat64(in))
     if value == -1 {
-        log.Print("Errot ransforming ", in, " into Int32")
+        log.Print("Error transforming ", in, " into Int32")
     }
     return value
+}
+
+func getJsonString(in interface{}) string {
+    marshaled_result, err := json.Marshal(in)
+    if err != nil {
+        log.Print("Error transforming ", in, " into JSON string")
+    }
+    result := string(marshaled_result)
+    return result
+}
+
+func exprElementIsTruthy(e exprElement) bool {
+    switch e.typ {
+        case J_STRING:
+            return len(e.value.(string)) > 0
+        case J_NUMBER:
+            return e.value.(float64) > 0
+        case J_OBJECT:
+            return true
+        case J_ARRAY:
+            return true
+        case J_BOOLEAN:
+            return e.value.(bool)
+        case J_NULL:
+            return false
+        default:
+            return false
+    }
+}
+
+func exprElementsMatch(lhs exprElement, rhs exprElement) bool {
+    return lhs.typ == rhs.typ
 }

@@ -113,7 +113,7 @@ var SCANNER = []scannerItem{
 var EXPRESSION_SCANNER = []scannerItem{
     scannerItem{
         regexp.MustCompile(`\s`),
-        S_KEYWORD,
+        S_EMPTY,
     },
     scannerItem{
         regexp.MustCompile(`true`),
