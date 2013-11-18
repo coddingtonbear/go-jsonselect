@@ -49,7 +49,7 @@ var SCANNER = []scannerItem{
         S_EXPR,
     },
     scannerItem{
-        regexp.MustCompile(`[~*,> ]`),
+        regexp.MustCompile(`[~*,>]`),
         S_OPER,
     },
     scannerItem{
