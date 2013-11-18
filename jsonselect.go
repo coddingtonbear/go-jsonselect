@@ -285,6 +285,9 @@ func (p *Parser) nthChildProduction(value interface{}, tokens []*token) (func(*N
     pattern := nthChildRegexp.FindStringSubmatch(args.(string))
 
     logger.Print("Creating nthChildProduction validator ", pattern)
+    for idx, pat := range pattern {
+        logger.Print("[", idx, "] ", pat)
+    }
 
     if pattern[5] != "" {
         a = 2
@@ -295,9 +298,10 @@ func (p *Parser) nthChildProduction(value interface{}, tokens []*token) (func(*N
         }
     } else if pattern[6] != ""{
         a = 0
-        b_temp, _ := strconv.ParseInt(pattern[6], 10, 64)
-        b = int(b_temp)
+        b_parsed, _ := strconv.ParseInt(pattern[6], 10, 64)
+        b = int(b_parsed)
     } else {
+        // Expression like +n-3
         sign := "+"
         if pattern[1] != "" {
             sign = pattern[1]
@@ -306,14 +310,19 @@ func (p *Parser) nthChildProduction(value interface{}, tokens []*token) (func(*N
         if pattern[2] != "" {
             coeff = pattern[2]
         }
-        a, _ := strconv.ParseInt(coeff, 10, 64)
+        a_parsed, _ := strconv.ParseInt(coeff, 10, 64)
+        a = int(a_parsed)
         if sign == "-" {
             a = -1 * a
         }
-        g3, _ := strconv.ParseInt(pattern[3], 10, 64)
-        g4, _ := strconv.ParseInt(pattern[4], 10, 64)
+
         if pattern[3] != "" {
-            b = int(g3 + g4)
+            b_sign := pattern[3]
+            b_parsed, _ := strconv.ParseInt(pattern[4], 10, 64)
+            b = int(b_parsed)
+            if b_sign == "-" {
+                b = -1 * b
+            }
         } else {
             b = 0
         }
@@ -324,6 +333,13 @@ func (p *Parser) nthChildProduction(value interface{}, tokens []*token) (func(*N
     }
 
     return func(node *Node)bool {
+        var b_str string
+        if b > 0 {
+            b_str = "+"
+        } else {
+            b_str = "-"
+        }
+        logger.Print("nthChildProduction ", a, "n", b_str, b)
         logger.Print("nthChildProduction ? ", node.siblings, " == 0")
         if node.siblings == 0 {
             return false
@@ -336,11 +352,11 @@ func (p *Parser) nthChildProduction(value interface{}, tokens []*token) (func(*N
             idx++
         }
 
-        logger.Print("nthChildProduction (continued) ? ", a, " == 0")
+        logger.Print("nthChildProduction (continued-1) ? ", a, " == 0")
         if a == 0 {
             return b == idx
         } else {
-            logger.Print("nthChildProduction (continued) ? ", idx-b % a, " == 0 AND ", idx*a+b, " >= 0")
+            logger.Print("nthChildProduction (continued-2) ? ", idx-b % a, " == 0 AND ", idx*a+b, " >= 0")
             return ((idx - b) % a) == 0 && (idx * a + b) >= 0
         }
     }, tokens
