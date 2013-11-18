@@ -431,7 +431,9 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
             logger.Print("pclassFuncProduction resursion completed with ", len(rvals), " results.")
             var ancestors []*Node
             for _, node := range rvals {
-                ancestors = append(ancestors, node.parent)
+                if node.parent != nil {
+                    ancestors = append(ancestors, node.parent)
+                }
             }
             logger.Print("pclassFuncProduction has ? ", node, " ∈ ", getFormattedNodeArray(ancestors))
             return nodeIsMemberOfList(node, ancestors)

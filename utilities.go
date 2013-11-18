@@ -143,7 +143,11 @@ func exprElementsMatch(lhs exprElement, rhs exprElement) bool {
 func getFormattedNodeArray(nodes []*Node) []string {
     var formatted []string
     for _, node := range nodes {
-        formatted = append(formatted, fmt.Sprint(*node))
+        if node != nil {
+            formatted = append(formatted, fmt.Sprint(*node))
+        } else {
+            formatted = append(formatted, fmt.Sprint(nil))
+        }
     }
     return formatted
 }
