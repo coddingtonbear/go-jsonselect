@@ -43,9 +43,22 @@ func runTestsInDirectory(t *testing.T, baseDirectory string) {
                 continue
             }
             var actualOutput []string
+            var stringTemporary string
             for _, str := range strings.Split(string(output_document), "\n") {
-                if len(str) > 0 {
-                    actualOutput = append(actualOutput, str)
+                stringTemporary = stringTemporary + str
+                // Try to parse -- if it works, we have the whole object
+                if strings.Index(stringTemporary, "{") == 0 {
+                    doc, err := simplejson.NewJson([]byte(stringTemporary))
+                    if err != nil {
+                        encoded, _ := doc.Encode()
+                        actualOutput = append(actualOutput, string(encoded))
+                        stringTemporary = ""
+                    }
+                } else {
+                    if len(stringTemporary) > 0 {
+                        actualOutput = append(actualOutput, stringTemporary)
+                        stringTemporary = ""
+                    }
                 }
             }
             testOutput[name[0:len(name)-len(".output")]] = actualOutput
@@ -82,13 +95,14 @@ func runTestsInDirectory(t *testing.T, baseDirectory string) {
 
         if len(stringResults) != len(expectedOutput) {
             t.Error("Test ", testName, " failed due to number of results being mismatched: [Actual] ", stringResults, " (", len(stringResults), ") != [Expected] ", expectedOutput, " (", len(expectedOutput), ")")
-        }
-        for idx, result := range stringResults {
-            expectedEncoded := expectedOutput[idx]
-            if expectedEncoded != result {
-                t.Error(
-                    "Test ", testName, " failed on item #", idx, ": [Actual] ", result, " != [Expected] ", expectedEncoded,
-                )
+        } else {
+            for idx, result := range stringResults {
+                expectedEncoded := expectedOutput[idx]
+                if expectedEncoded != result {
+                    t.Error(
+                        "Test ", testName, " failed on item #", idx, ": [Actual] ", result, " != [Expected] ", expectedEncoded,
+                    )
+                }
             }
         }
     }

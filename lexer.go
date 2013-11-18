@@ -195,6 +195,10 @@ func Lex(input string, scanners []scannerItem) ([]*token, error) {
             )
         }
     }
+    logger.Print("Tokenization results: ", input)
+    for i, token := range tokens {
+        logger.Print("[", i, "] ", token)
+    }
     return tokens, nil
 }
 
@@ -204,7 +208,7 @@ func getToken(typ tokenType, val string) token {
         case S_IDENTIFIER, S_PCLASS, S_PCLASS_FUNC, S_NTH_FUNC:
             return token{typ, val[1:]}
         case S_QUOTED_IDENTIFIER:
-            return token{S_IDENTIFIER, strings.Replace(val, `"`, "", 0)}
+            return token{S_IDENTIFIER, val[2:len(val)-1]}
         case S_NIL:
             return token{typ, nil}
         case S_BOOL:
