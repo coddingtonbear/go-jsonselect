@@ -230,3 +230,24 @@ func getToken(typ tokenType, val string) token {
             return token{typ, val}
     }
 }
+
+func getBinopPrecendence(value string) int {
+    switch value {
+        case "*":
+            return 100
+        case "/":
+            return 99
+        case "%":
+            return 98
+        case "+":
+            return 50
+        case "-":
+            return 49
+        case "&&":
+            return 25
+        case "||":
+            return 24
+        default:
+            return 0
+    }
+}

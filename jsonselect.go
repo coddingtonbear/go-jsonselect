@@ -20,7 +20,7 @@ type Parser struct {
 
 func EnableLogger() {
     logger = log.New(
-        os.Stderr,
+        os.Stdout,
         "jsonselect: ",
         0,
     )
@@ -460,7 +460,7 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
     }, tokens
 }
 
-func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[string]func(exprElement, exprElement)exprElement) exprElement {
+func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[string]func(exprElement, exprElement)exprElement, recursionDepth int) exprElement {
     var matched bool
     var lhs exprElement
     var rhs exprElement
@@ -468,11 +468,12 @@ func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[
     if len(tokens) < 1 {
         return exprElement{false, J_BOOLEAN}
     }
+    logger.Print("evaluateParsedExpression(", recursionDepth, ") starting with ", tokens[0], " - ", len(tokens), " tokens remaining.")
 
     value, matched, _ := p.peek(tokens, S_PAREN)
     if matched && value.(string) == "(" {
         _, tokens, _ = p.match(tokens, S_PAREN)
-        lhs = p.evaluateParsedExpression(tokens, node, cmap)
+        lhs = p.evaluateParsedExpression(tokens, node, cmap, recursionDepth+1)
         return lhs
     }
 
@@ -507,15 +508,16 @@ func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[
     value, matched, _ = p.peek(tokens, S_PAREN)
     if matched && value.(string) == ")" {
         _, tokens, _ = p.match(tokens, S_PAREN)
-        // Short-circuit?
+        // End of recursive processing
         return lhs
     }
 
     binop, tokens, _ := p.match(tokens, S_BINOP)
     comparatorFunction := cmap[binop.(string)]
-    rhs = p.evaluateParsedExpression(tokens, node, cmap)
+    rhs = p.evaluateParsedExpression(tokens, node, cmap, recursionDepth+1)
 
     if ! exprElementsMatch(lhs, rhs) {
+        logger.Print("Unable to compare ", lhs, " with ", rhs)
         return exprElement{false, J_BOOLEAN}
     }
     return comparatorFunction(lhs, rhs)
@@ -620,5 +622,5 @@ func (p *Parser) parseExpression(tokens []*token, node *Node) exprElement {
             return exprElement{false, J_BOOLEAN}
         },
     }
-    return p.evaluateParsedExpression(tokens, node, comparatorMap)
+    return p.evaluateParsedExpression(tokens, node, comparatorMap, 1)
 }
