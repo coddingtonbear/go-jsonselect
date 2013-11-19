@@ -7,11 +7,6 @@ import (
     "strconv"
 )
 
-type exprElement struct {
-    value interface{}
-    typ jsonType
-}
-
 func nodeIsMemberOfList(needle *Node, haystack []*Node) bool {
     for _, element := range haystack {
         if element.json == needle.json {

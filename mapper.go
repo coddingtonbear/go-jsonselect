@@ -13,6 +13,9 @@ const (
     J_ARRAY jsonType = "array"
     J_BOOLEAN jsonType = "boolean"
     J_NULL jsonType = "null"
+
+    // Not actually a type, obviously
+    J_OPER jsonType = "oper"
 )
 
 type Node struct {
