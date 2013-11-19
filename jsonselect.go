@@ -409,7 +409,7 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
         tokens, _ := Lex(sargs.(string), EXPRESSION_SCANNER)
         var tokens_to_return []*token
         return func(node *Node)bool {
-            result := p.parseExpression(tokens, node)
+            result := p.evaluateExpression(tokens, node)
             logger.Print("pclassFuncProduction expr ? ", result)
             return exprElementIsTruthy(result)
         }, tokens_to_return
@@ -460,46 +460,50 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
     }, tokens
 }
 
-func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[string]func(exprElement, exprElement)exprElement, recursionDepth int) exprElement {
+func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[string]func(exprElement, exprElement)exprElement, recursionDepth int) ([]*token, exprElement) {
     var matched bool
     var lhs exprElement
     var rhs exprElement
 
     if len(tokens) < 1 {
-        return exprElement{false, J_BOOLEAN}
+        return tokens, exprElement{false, J_BOOLEAN}
     }
     logger.Print("evaluateParsedExpression(", recursionDepth, ") starting with ", tokens[0], " - ", len(tokens), " tokens remaining.")
 
     value, matched, _ := p.peek(tokens, S_PAREN)
     if matched && value.(string) == "(" {
         _, tokens, _ = p.match(tokens, S_PAREN)
-        lhs = p.evaluateParsedExpression(tokens, node, cmap, recursionDepth+1)
-        return lhs
-    }
-
-    _, matched, _ = p.peek(tokens, S_PVAR)
-    if matched {
-        _, tokens, _ = p.match(tokens, S_PVAR)
-        lhs = exprElement{node.value, node.typ}
+        logger.Print("evaluateParsedExpression(", recursionDepth, ") recursing due to parens.")
+        tokens, lhs = p.evaluateParsedExpression(tokens, node, cmap, recursionDepth+1)
+        logger.Print("Control returned to evaluateParsedExpression(", recursionDepth, ") with value ", lhs)
+        if len(tokens) < 1 {
+            return tokens, lhs
+        }
     } else {
-        relevantTokens := []tokenType{S_STRING, S_BOOL, S_NIL, S_NUMBER}
-        for _, ttype := range relevantTokens {
-            _, matched, _ = p.peek(tokens, ttype)
-            if matched {
-                var matchedValue interface{}
-                matchedValue, tokens, _ = p.match(tokens, ttype)
-                if matchedValue != nil {
-                    jType := J_STRING
-                    if ttype == S_BOOL {
-                        jType = J_BOOLEAN
-                    } else if ttype == S_NIL {
-                        jType = J_NULL
-                    } else if ttype == S_NUMBER {
-                        jType = J_NUMBER
+        _, matched, _ = p.peek(tokens, S_PVAR)
+        if matched {
+            _, tokens, _ = p.match(tokens, S_PVAR)
+            lhs = exprElement{node.value, node.typ}
+        } else {
+            relevantTokens := []tokenType{S_STRING, S_BOOL, S_NIL, S_NUMBER}
+            for _, ttype := range relevantTokens {
+                _, matched, _ = p.peek(tokens, ttype)
+                if matched {
+                    var matchedValue interface{}
+                    matchedValue, tokens, _ = p.match(tokens, ttype)
+                    if matchedValue != nil {
+                        jType := J_STRING
+                        if ttype == S_BOOL {
+                            jType = J_BOOLEAN
+                        } else if ttype == S_NIL {
+                            jType = J_NULL
+                        } else if ttype == S_NUMBER {
+                            jType = J_NUMBER
+                        }
+                        lhs = exprElement{matchedValue, jType}
+                    } else {
+                        lhs = exprElement{nil, J_NULL}
                     }
-                    lhs = exprElement{matchedValue, jType}
-                } else {
-                    lhs = exprElement{nil, J_NULL}
                 }
             }
         }
@@ -509,21 +513,26 @@ func (p *Parser) evaluateParsedExpression(tokens []*token, node *Node, cmap map[
     if matched && value.(string) == ")" {
         _, tokens, _ = p.match(tokens, S_PAREN)
         // End of recursive processing
-        return lhs
+        logger.Print("evaluateParsedExpression(", recursionDepth, ") finished via closing parens with value ", lhs)
+        return tokens, lhs
     }
 
+    logger.Print("Remaining tokens: ", getFormattedExpression(tokens))
     binop, tokens, _ := p.match(tokens, S_BINOP)
+    logger.Print(binop)
     comparatorFunction := cmap[binop.(string)]
-    rhs = p.evaluateParsedExpression(tokens, node, cmap, recursionDepth+1)
+    logger.Print("evaluateParsedExpression(", recursionDepth, ") recursing due to binop '", binop.(string), "'")
+    tokens, rhs = p.evaluateParsedExpression(tokens, node, cmap, recursionDepth+1)
+    logger.Print("Control returned to evaluateParsedExpression(", recursionDepth, ") with value ", rhs)
 
     if ! exprElementsMatch(lhs, rhs) {
         logger.Print("Unable to compare ", lhs, " with ", rhs)
-        return exprElement{false, J_BOOLEAN}
+        return tokens, exprElement{false, J_BOOLEAN}
     }
-    return comparatorFunction(lhs, rhs)
+    return tokens, comparatorFunction(lhs, rhs)
 }
 
-func (p *Parser) parseExpression(tokens []*token, node *Node) exprElement {
+func (p *Parser) evaluateExpression(tokens []*token, node *Node) exprElement {
     comparatorMap := map[string]func(lhs exprElement, rhs exprElement)exprElement{
         "*": func(lhs exprElement, rhs exprElement)exprElement {
             value := getFloat64(lhs.value) * getFloat64(rhs.value)
@@ -622,5 +631,17 @@ func (p *Parser) parseExpression(tokens []*token, node *Node) exprElement {
             return exprElement{false, J_BOOLEAN}
         },
     }
-    return p.evaluateParsedExpression(tokens, node, comparatorMap, 1)
+    tokens, value := p.evaluateParsedExpression(
+        linearizeParsedExpression(tokens),
+        node,
+        comparatorMap,
+        1,
+    )
+    if len(tokens) > 0 {
+        logger.Print("Error: tokens were remaining after evaluating expression:")
+        for idx, tok := range tokens {
+            logger.Print("[", idx, "] ", tok)
+        }
+    }
+    return value
 }
