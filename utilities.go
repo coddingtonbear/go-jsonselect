@@ -7,7 +7,7 @@ import (
     "strconv"
 )
 
-func nodeIsMemberOfList(needle *Node, haystack []*Node) bool {
+func nodeIsMemberOfList(needle *JsonNode, haystack []*JsonNode) bool {
     for _, element := range haystack {
         if element.json == needle.json {
             return true
@@ -16,7 +16,7 @@ func nodeIsMemberOfList(needle *Node, haystack []*Node) bool {
     return false
 }
 
-func nodeIsAncestorOfHaystackMember(needle *Node, haystack []*Node) bool {
+func nodeIsAncestorOfHaystackMember(needle *JsonNode, haystack []*JsonNode) bool {
     if nodeIsMemberOfList(needle, haystack) {
         return true
     }
@@ -26,8 +26,8 @@ func nodeIsAncestorOfHaystackMember(needle *Node, haystack []*Node) bool {
     return nodeIsAncestorOfHaystackMember(needle.parent, haystack)
 }
 
-func parents(lhs []*Node, rhs []*Node) []*Node {
-    var results []*Node
+func parents(lhs []*JsonNode, rhs []*JsonNode) []*JsonNode {
+    var results []*JsonNode
 
     for _, element := range rhs {
         if nodeIsMemberOfList(element.parent, lhs) {
@@ -38,8 +38,8 @@ func parents(lhs []*Node, rhs []*Node) []*Node {
     return results
 }
 
-func ancestors(lhs []*Node, rhs []*Node) []*Node {
-    var results []*Node
+func ancestors(lhs []*JsonNode, rhs []*JsonNode) []*JsonNode {
+    var results []*JsonNode
 
     for _, element := range rhs {
         if nodeIsAncestorOfHaystackMember(element, lhs) {
@@ -50,9 +50,9 @@ func ancestors(lhs []*Node, rhs []*Node) []*Node {
     return results
 }
 
-func siblings(lhs []*Node, rhs []*Node) []*Node {
-    var parents []*Node
-    var results []*Node
+func siblings(lhs []*JsonNode, rhs []*JsonNode) []*JsonNode {
+    var parents []*JsonNode
+    var results []*JsonNode
 
     for _, element := range lhs {
         parents = append(parents, element.parent)
@@ -140,7 +140,7 @@ func exprElementsMatch(lhs exprElement, rhs exprElement) bool {
     return lhs.typ == rhs.typ
 }
 
-func getFormattedNodeArray(nodes []*Node) []string {
+func getFormattedJsonNodeArray(nodes []*JsonNode) []string {
     var formatted []string
     for _, node := range nodes {
         if node != nil {

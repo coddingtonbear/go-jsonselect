@@ -8,7 +8,7 @@ import (
     "github.com/latestrevision/go-simplejson"
 )
 
-func getTestParser(testDocuments map[string]*simplejson.Json, testName string) (*Parser, error) {
+func getTestParser(testDocuments map[string]*simplejson.Json, testName string) (*parser, error) {
     jsonDocument := testDocuments[testName[0:strings.Index(testName, "_")]]
     return CreateParser(jsonDocument)
 }

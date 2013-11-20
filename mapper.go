@@ -18,23 +18,23 @@ const (
     J_OPER jsonType = "oper"
 )
 
-type Node struct {
+type JsonNode struct {
     value interface{}
     typ jsonType
     json *simplejson.Json
-    parent *Node
+    parent *JsonNode
     parent_key string
     idx int
     siblings int
 }
 
-func (p *Parser) getFlooredDocumentMap(node *Node) []*Node {
-    var newMap []*Node
-    return p.findSubordinateNodes(node.json, newMap, nil, "", -1, -1)
+func (p *parser) getFlooredDocumentMap(node *JsonNode) []*JsonNode {
+    var newMap []*JsonNode
+    return p.findSubordinateJsonNodes(node.json, newMap, nil, "", -1, -1)
 }
 
-func (p *Parser) findSubordinateNodes(jdoc *simplejson.Json, nodes []*Node, parent *Node, parent_key string, idx int, siblings int) []*Node {
-    node := Node{}
+func (p *parser) findSubordinateJsonNodes(jdoc *simplejson.Json, nodes []*JsonNode, parent *JsonNode, parent_key string, idx int, siblings int) []*JsonNode {
+    node := JsonNode{}
     node.parent = parent
     node.json = jdoc
     if len(parent_key) > 0 {
@@ -82,7 +82,7 @@ func (p *Parser) findSubordinateNodes(jdoc *simplejson.Json, nodes []*Node, pare
         node.typ = J_ARRAY
         for i := 0; i < length; i++ {
             element := jdoc.GetIndex(i)
-            nodes = p.findSubordinateNodes(element, nodes, &node, "", i + 1, length)
+            nodes = p.findSubordinateJsonNodes(element, nodes, &node, "", i + 1, length)
         }
     }
     data, err := jdoc.Map()
@@ -91,7 +91,7 @@ func (p *Parser) findSubordinateNodes(jdoc *simplejson.Json, nodes []*Node, pare
         node.typ = J_OBJECT
         for key := range data {
             element := jdoc.Get(key)
-            nodes = p.findSubordinateNodes(element, nodes, &node, key, -1, -1)
+            nodes = p.findSubordinateJsonNodes(element, nodes, &node, key, -1, -1)
         }
     }
 
@@ -99,7 +99,7 @@ func (p *Parser) findSubordinateNodes(jdoc *simplejson.Json, nodes []*Node, pare
     return nodes
 }
 
-func (p *Parser) mapDocument() {
-    var nodes []*Node
-    p.nodes = p.findSubordinateNodes(p.data, nodes, nil, "", -1, -1)
+func (p *parser) mapDocument() {
+    var nodes []*JsonNode
+    p.nodes = p.findSubordinateJsonNodes(p.data, nodes, nil, "", -1, -1)
 }
