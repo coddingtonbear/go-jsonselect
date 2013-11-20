@@ -75,10 +75,6 @@ func (p *Parser) GetJsonElements(selector string) ([]*simplejson.Json, error) {
     return results, nil
 }
 
-func (p *Parser) GetjsonNodes(selector string) ([]*jsonNode, error) {
-    return p.evaluateSelector(selector)
-}
-
 func (p *Parser) GetValues(selector string) ([]interface{}, error) {
     nodes, err := p.evaluateSelector(selector)
     if err != nil {
