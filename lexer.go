@@ -179,7 +179,7 @@ func lexNextToken(input string, scanners []scannerItem) (*token, int, error) {
 }
 
 
-func Lex(input string, scanners []scannerItem) ([]*token, error) {
+func lex(input string, scanners []scannerItem) ([]*token, error) {
     var tokens []*token
     var start = 0
     for start < len(input) {
