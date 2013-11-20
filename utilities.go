@@ -90,6 +90,7 @@ func getFloat64(in interface{}) float64 {
             return value
         }
     }
+    panic("ERR")
     result := float64(-1)
     log.Print("Error transforming ", in, " into Float64")
     return result

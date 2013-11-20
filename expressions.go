@@ -136,8 +136,13 @@ func (p *Parser) evaluateExpressionWithPrecedence(elements []*exprElement, prece
             lhs := newExpression[len(newExpression)-1]
             rhs := elements[i+1]
             newExpression = newExpression[0:len(newExpression)-1]
-            result := comparatorMap[element.value.(string)](*lhs, *rhs)
-            newExpression = append(newExpression, &result)
+            if exprElementsMatch(*lhs, *rhs) {
+                result := comparatorMap[element.value.(string)](*lhs, *rhs)
+                newExpression = append(newExpression, &result)
+            } else {
+                logger.Print("Cannot compare ", lhs.value, " and ", rhs.value, "; types differ: ", rhs.typ, " != ", lhs.typ)
+                newExpression = append(newExpression, &exprElement{false, J_BOOLEAN})
+            }
             // Skip ahead an additional step more than normal
             // since we just pulled off one more element than normal.
             i += 1
