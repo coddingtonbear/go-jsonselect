@@ -14,7 +14,7 @@ import (
 var logger = log.New(ioutil.Discard, "jsonselect: ", 0,)
 
 type Parser struct {
-    data *simplejson.Json
+    Data *simplejson.Json
     nodes []*jsonNode
 }
 

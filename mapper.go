@@ -101,5 +101,5 @@ func (p *Parser) findSubordinatejsonNodes(jdoc *simplejson.Json, nodes []*jsonNo
 
 func (p *Parser) mapDocument() {
     var nodes []*jsonNode
-    p.nodes = p.findSubordinatejsonNodes(p.data, nodes, nil, "", -1, -1)
+    p.nodes = p.findSubordinatejsonNodes(p.Data, nodes, nil, "", -1, -1)
 }
