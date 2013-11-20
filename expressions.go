@@ -163,7 +163,7 @@ func (p *parser) evaluateExpression(elements []*exprElement) exprElement {
     return *elements[0]
 }
 
-func (p *parser) parseExpression(tokens []*token, node *JsonNode) exprElement {
+func (p *parser) parseExpression(tokens []*token, node *jsonNode) exprElement {
     var finalTokens []*exprElement
 
     logger.Print("Parsing expression ", getFormattedTokens(tokens))

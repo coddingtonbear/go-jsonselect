@@ -7,7 +7,7 @@ import (
     "strconv"
 )
 
-func nodeIsMemberOfList(needle *JsonNode, haystack []*JsonNode) bool {
+func nodeIsMemberOfList(needle *jsonNode, haystack []*jsonNode) bool {
     for _, element := range haystack {
         if element.json == needle.json {
             return true
@@ -16,7 +16,7 @@ func nodeIsMemberOfList(needle *JsonNode, haystack []*JsonNode) bool {
     return false
 }
 
-func nodeIsAncestorOfHaystackMember(needle *JsonNode, haystack []*JsonNode) bool {
+func nodeIsAncestorOfHaystackMember(needle *jsonNode, haystack []*jsonNode) bool {
     if nodeIsMemberOfList(needle, haystack) {
         return true
     }
@@ -26,8 +26,8 @@ func nodeIsAncestorOfHaystackMember(needle *JsonNode, haystack []*JsonNode) bool
     return nodeIsAncestorOfHaystackMember(needle.parent, haystack)
 }
 
-func parents(lhs []*JsonNode, rhs []*JsonNode) []*JsonNode {
-    var results []*JsonNode
+func parents(lhs []*jsonNode, rhs []*jsonNode) []*jsonNode {
+    var results []*jsonNode
 
     for _, element := range rhs {
         if nodeIsMemberOfList(element.parent, lhs) {
@@ -38,8 +38,8 @@ func parents(lhs []*JsonNode, rhs []*JsonNode) []*JsonNode {
     return results
 }
 
-func ancestors(lhs []*JsonNode, rhs []*JsonNode) []*JsonNode {
-    var results []*JsonNode
+func ancestors(lhs []*jsonNode, rhs []*jsonNode) []*jsonNode {
+    var results []*jsonNode
 
     for _, element := range rhs {
         if nodeIsAncestorOfHaystackMember(element, lhs) {
@@ -50,9 +50,9 @@ func ancestors(lhs []*JsonNode, rhs []*JsonNode) []*JsonNode {
     return results
 }
 
-func siblings(lhs []*JsonNode, rhs []*JsonNode) []*JsonNode {
-    var parents []*JsonNode
-    var results []*JsonNode
+func siblings(lhs []*jsonNode, rhs []*jsonNode) []*jsonNode {
+    var parents []*jsonNode
+    var results []*jsonNode
 
     for _, element := range lhs {
         parents = append(parents, element.parent)
@@ -140,7 +140,7 @@ func exprElementsMatch(lhs exprElement, rhs exprElement) bool {
     return lhs.typ == rhs.typ
 }
 
-func getFormattedJsonNodeArray(nodes []*JsonNode) []string {
+func getFormattedjsonNodeArray(nodes []*jsonNode) []string {
     var formatted []string
     for _, node := range nodes {
         if node != nil {
