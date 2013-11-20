@@ -55,7 +55,7 @@ var json string = `
 
 func main() {
     parser, _ := jsonselect.CreateParserFromString(json)
-    results, _ := parser.GetValues(".beers object:has(.rating:expr(x>70)))
+    results, _ := parser.GetValues(".beers object:has(.rating:expr(x>70))")
     fmt.Print(results)
     // Results [map[title: beta rating: 90]]
 }
