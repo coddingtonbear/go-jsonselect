@@ -1,5 +1,6 @@
 
 [![Build Status](https://travis-ci.org/latestrevision/go-jsonselect.png?branch=master)](https://travis-ci.org/latestrevision/go-jsonselect)
+[![GoDoc](https://godoc.org/github.com/latestrevision/go-jsonselect?status.png)](http://godoc.org/github.com/latestrevision/go-jsonselect)
 
 go-jsonselect
 =============
