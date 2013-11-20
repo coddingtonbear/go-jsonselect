@@ -150,3 +150,19 @@ func getFormattedNodeArray(nodes []*Node) []string {
     }
     return formatted
 }
+
+func getFormattedTokens(tokens []*token) []string {
+    var output []string
+    for _, token := range tokens {
+        output = append(output, fmt.Sprint(token.val))
+    }
+    return output
+}
+
+func getFormattedExpression(tokens []*exprElement) []string {
+    var output []string
+    for _, token := range tokens {
+        output = append(output, fmt.Sprint(token.value))
+    }
+    return output
+}

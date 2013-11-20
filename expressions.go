@@ -161,6 +161,8 @@ func (p *Parser) evaluateExpression(elements []*exprElement) exprElement {
 func (p *Parser) parseExpression(tokens []*token, node *Node) exprElement {
     var finalTokens []*exprElement
 
+    logger.Print("Parsing expression ", getFormattedTokens(tokens))
+
     // If this expression is wrapped with parentheses, let's remove them.
     if tokens[0].typ == S_PAREN && tokens[0].val == "(" {
         tokens = tokens[1:len(tokens)-1]

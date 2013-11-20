@@ -406,7 +406,10 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
     logger.Print("Creating pclassFuncProduction validator ", pclass)
 
     if pclass == "expr" {
-        tokens, _ := Lex(sargs.(string), EXPRESSION_SCANNER)
+        tokens, err := Lex(sargs.(string), EXPRESSION_SCANNER)
+        if err != nil {
+            panic(err)
+        }
         var tokens_to_return []*token
         return func(node *Node)bool {
             result := p.parseExpression(tokens, node)

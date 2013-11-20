@@ -116,7 +116,7 @@ var EXPRESSION_SCANNER = []scannerItem{
         S_EMPTY,
     },
     scannerItem{
-        regexp.MustCompile(`true`),
+        regexp.MustCompile(`true|false`),
         S_BOOL,
     },
     scannerItem{
