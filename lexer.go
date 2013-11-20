@@ -43,7 +43,7 @@ const (
     S_PAREN tokenType = "paren"
 )
 
-var SCANNER = []scannerItem{
+var selectorScanner = []scannerItem{
     scannerItem{
         regexp.MustCompile(`\([^\)]+\)`),
         S_EXPR,
@@ -110,7 +110,7 @@ var SCANNER = []scannerItem{
     },
 }
 
-var EXPRESSION_SCANNER = []scannerItem{
+var expressionScanner = []scannerItem{
     scannerItem{
         regexp.MustCompile(`\s`),
         S_EMPTY,

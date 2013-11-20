@@ -44,7 +44,7 @@ func CreateParser(json *simplejson.Json) (*Parser, error) {
 }
 
 func (p *Parser) evaluateSelector(selector string) ([]*jsonNode, error) {
-    tokens, err := lex(selector, SCANNER)
+    tokens, err := lex(selector, selectorScanner)
     if err != nil {
         return nil, err
     }
@@ -406,7 +406,7 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
     logger.Print("Creating pclassFuncProduction validator ", pclass)
 
     if pclass == "expr" {
-        tokens, err := lex(sargs.(string), EXPRESSION_SCANNER)
+        tokens, err := lex(sargs.(string), expressionScanner)
         if err != nil {
             panic(err)
         }
@@ -419,7 +419,7 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
     }
 
     lexString := sargs.(string)[1:len(sargs.(string))-1]
-    args, _ := lex(lexString, SCANNER)
+    args, _ := lex(lexString, selectorScanner)
 
     logger.Print("pclassFuncProduction lex results for [", lexString, "]: (follow)")
     for i, arg := range args {
