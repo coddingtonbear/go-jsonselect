@@ -28,12 +28,12 @@ type jsonNode struct {
     siblings int
 }
 
-func (p *parser) getFlooredDocumentMap(node *jsonNode) []*jsonNode {
+func (p *Parser) getFlooredDocumentMap(node *jsonNode) []*jsonNode {
     var newMap []*jsonNode
     return p.findSubordinatejsonNodes(node.json, newMap, nil, "", -1, -1)
 }
 
-func (p *parser) findSubordinatejsonNodes(jdoc *simplejson.Json, nodes []*jsonNode, parent *jsonNode, parent_key string, idx int, siblings int) []*jsonNode {
+func (p *Parser) findSubordinatejsonNodes(jdoc *simplejson.Json, nodes []*jsonNode, parent *jsonNode, parent_key string, idx int, siblings int) []*jsonNode {
     node := jsonNode{}
     node.parent = parent
     node.json = jdoc
@@ -99,7 +99,7 @@ func (p *parser) findSubordinatejsonNodes(jdoc *simplejson.Json, nodes []*jsonNo
     return nodes
 }
 
-func (p *parser) mapDocument() {
+func (p *Parser) mapDocument() {
     var nodes []*jsonNode
     p.nodes = p.findSubordinatejsonNodes(p.data, nodes, nil, "", -1, -1)
 }

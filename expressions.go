@@ -126,7 +126,7 @@ var comparatorMap = map[string]func(lhs exprElement, rhs exprElement)exprElement
     },
 }
 
-func (p *parser) evaluateExpressionWithPrecedence(elements []*exprElement, precedenceLevel int) []*exprElement {
+func (p *Parser) evaluateExpressionWithPrecedence(elements []*exprElement, precedenceLevel int) []*exprElement {
     var newExpression []*exprElement
     var i int
     var element *exprElement
@@ -153,7 +153,7 @@ func (p *parser) evaluateExpressionWithPrecedence(elements []*exprElement, prece
     return newExpression
 }
 
-func (p *parser) evaluateExpression(elements []*exprElement) exprElement {
+func (p *Parser) evaluateExpression(elements []*exprElement) exprElement {
     for i := 1; i < 5; i++ {
         elements = p.evaluateExpressionWithPrecedence(elements, i)
     }
@@ -163,7 +163,7 @@ func (p *parser) evaluateExpression(elements []*exprElement) exprElement {
     return *elements[0]
 }
 
-func (p *parser) parseExpression(tokens []*token, node *jsonNode) exprElement {
+func (p *Parser) parseExpression(tokens []*token, node *jsonNode) exprElement {
     var finalTokens []*exprElement
 
     logger.Print("Parsing expression ", getFormattedTokens(tokens))

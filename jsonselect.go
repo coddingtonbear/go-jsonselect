@@ -13,7 +13,7 @@ import (
 
 var logger = log.New(ioutil.Discard, "jsonselect: ", 0,)
 
-type parser struct {
+type Parser struct {
     data *simplejson.Json
     nodes []*jsonNode
 }
@@ -26,24 +26,24 @@ func EnableLogger() {
     )
 }
 
-func CreateParserFromString(body string) (*parser, error) {
+func CreateParserFromString(body string) (*Parser, error) {
     json, err := simplejson.NewJson([]byte(body))
     if err != nil {
         return nil, err
     }
-    parser := parser{json, nil}
+    parser := Parser{json, nil}
     parser.mapDocument()
     return &parser, err
 }
 
-func CreateParser(json *simplejson.Json) (*parser, error) {
+func CreateParser(json *simplejson.Json) (*Parser, error) {
     log.SetOutput(ioutil.Discard)
-    parser := parser{json, nil}
+    parser := Parser{json, nil}
     parser.mapDocument()
     return &parser, nil
 }
 
-func (p *parser) evaluateSelector(selector string) ([]*jsonNode, error) {
+func (p *Parser) evaluateSelector(selector string) ([]*jsonNode, error) {
     tokens, err := lex(selector, SCANNER)
     if err != nil {
         return nil, err
@@ -59,7 +59,7 @@ func (p *parser) evaluateSelector(selector string) ([]*jsonNode, error) {
     return nodes, nil
 }
 
-func (p *parser) GetJsonElements(selector string) ([]*simplejson.Json, error) {
+func (p *Parser) GetJsonElements(selector string) ([]*simplejson.Json, error) {
     nodes, err := p.evaluateSelector(selector)
     if err != nil {
         return nil, err
@@ -75,11 +75,11 @@ func (p *parser) GetJsonElements(selector string) ([]*simplejson.Json, error) {
     return results, nil
 }
 
-func (p *parser) GetjsonNodes(selector string) ([]*jsonNode, error) {
+func (p *Parser) GetjsonNodes(selector string) ([]*jsonNode, error) {
     return p.evaluateSelector(selector)
 }
 
-func (p *parser) GetValues(selector string) ([]interface{}, error) {
+func (p *Parser) GetValues(selector string) ([]interface{}, error) {
     nodes, err := p.evaluateSelector(selector)
     if err != nil {
         return nil, err
@@ -96,7 +96,7 @@ func (p *parser) GetValues(selector string) ([]interface{}, error) {
     return results, nil
 }
 
-func (p *parser) selectorProduction(tokens []*token, documentMap []*jsonNode, recursionDepth int) ([]*jsonNode, error) {
+func (p *Parser) selectorProduction(tokens []*token, documentMap []*jsonNode, recursionDepth int) ([]*jsonNode, error) {
     var results []*jsonNode
     var validators []func(*jsonNode)bool
     var matched bool
@@ -204,7 +204,7 @@ func (p *parser) selectorProduction(tokens []*token, documentMap []*jsonNode, re
     return results, nil
 }
 
-func (p *parser) peek(tokens []*token, typ tokenType) (interface{}, bool, error) {
+func (p *Parser) peek(tokens []*token, typ tokenType) (interface{}, bool, error) {
     if len(tokens) < 1 {
         return nil, false, errors.New("No more tokens")
     }
@@ -214,7 +214,7 @@ func (p *parser) peek(tokens []*token, typ tokenType) (interface{}, bool, error)
     return nil, false, nil
 }
 
-func (p *parser) match(tokens []*token, typ tokenType) (interface{}, []*token, error) {
+func (p *Parser) match(tokens []*token, typ tokenType) (interface{}, []*token, error) {
     value, matched, _ := p.peek(tokens, typ)
     if !matched {
         return nil, tokens, errors.New("Match not successful")
@@ -223,7 +223,7 @@ func (p *parser) match(tokens []*token, typ tokenType) (interface{}, []*token, e
     return value, tokens, nil
 }
 
-func (p *parser) matchjsonNodes(validators []func(*jsonNode)bool, documentMap []*jsonNode) ([]*jsonNode, error) {
+func (p *Parser) matchjsonNodes(validators []func(*jsonNode)bool, documentMap []*jsonNode) ([]*jsonNode, error) {
     var matches []*jsonNode
     for _, node := range documentMap {
         var passed = true
@@ -241,14 +241,14 @@ func (p *parser) matchjsonNodes(validators []func(*jsonNode)bool, documentMap []
     return matches, nil
 }
 
-func (p *parser) typeProduction(value interface{}) func(*jsonNode)bool {
+func (p *Parser) typeProduction(value interface{}) func(*jsonNode)bool {
     logger.Print("Creating typeProduction validator ", value)
     return func(node *jsonNode) bool {
         logger.Print("typeProduction ? ", node.typ, " == ", value)
         return string(node.typ) == value
     }
 }
-func (p *parser) keyProduction(value interface{}) func(*jsonNode)bool {
+func (p *Parser) keyProduction(value interface{}) func(*jsonNode)bool {
     // TODO: Verify this -- I'm not sure what this is supposed to match
     logger.Print("Creating keyProduction validator ", value)
     return func(node *jsonNode) bool {
@@ -260,7 +260,7 @@ func (p *parser) keyProduction(value interface{}) func(*jsonNode)bool {
     }
 }
 
-func (p *parser) universalProduction(value interface{}) func(*jsonNode)bool {
+func (p *Parser) universalProduction(value interface{}) func(*jsonNode)bool {
     operator := value.(string)
     if operator == "*" {
         return func(node *jsonNode) bool {
@@ -276,7 +276,7 @@ func (p *parser) universalProduction(value interface{}) func(*jsonNode)bool {
     }
 }
 
-func (p *parser) pclassProduction(value interface{}) func(*jsonNode)bool {
+func (p *Parser) pclassProduction(value interface{}) func(*jsonNode)bool {
     pclass := value.(string)
     logger.Print("Creating pclassProduction validator ", pclass)
     if pclass == "first-child" {
@@ -312,7 +312,7 @@ func (p *parser) pclassProduction(value interface{}) func(*jsonNode)bool {
     }
 }
 
-func (p *parser) nthChildProduction(value interface{}, tokens []*token) (func(*jsonNode)bool, []*token) {
+func (p *Parser) nthChildProduction(value interface{}, tokens []*token) (func(*jsonNode)bool, []*token) {
     nthChildRegexp := regexp.MustCompile(`^\s*\(\s*(?:([+\-]?)([0-9]*)n\s*(?:([+\-])\s*([0-9]))?|(odd|even)|([+\-]?[0-9]+))\s*\)`)
     args, tokens, _ := p.match(tokens, S_EXPR)
     var a int
@@ -399,7 +399,7 @@ func (p *parser) nthChildProduction(value interface{}, tokens []*token) (func(*j
     }, tokens
 }
 
-func (p *parser) pclassFuncProduction(value interface{}, tokens []*token, documentMap []*jsonNode) (func(*jsonNode)bool, []*token) {
+func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, documentMap []*jsonNode) (func(*jsonNode)bool, []*token) {
     sargs, tokens, _ := p.match(tokens, S_EXPR)
     pclass := value.(string)
 
