@@ -1,6 +1,7 @@
 package jsonselect
 
 import (
+    "sort"
     "github.com/latestrevision/go-simplejson"
 )
 
@@ -26,14 +27,32 @@ type jsonNode struct {
     parent_key string
     idx int
     siblings int
+    position int
 }
 
-func (p *Parser) getFlooredDocumentMap(node *jsonNode) []*jsonNode {
-    var newMap []*jsonNode
-    return p.findSubordinatejsonNodes(node.json, newMap, nil, "", -1, -1)
+func buildAncestorNodeMap(node *jsonNode, ancestors map[*simplejson.Json]bool) {
+    if node.parent != nil {
+        ancestors[node.parent.json] = true
+        buildAncestorNodeMap(node.parent, ancestors)
+    }
 }
 
-func (p *Parser) findSubordinatejsonNodes(jdoc *simplejson.Json, nodes []*jsonNode, parent *jsonNode, parent_key string, idx int, siblings int) []*jsonNode {
+func (p *Parser) getFlooredDocumentMap(node *jsonNode) map[*simplejson.Json]*jsonNode {
+    ancestorNodeMap := make(map[*simplejson.Json]bool)
+    buildAncestorNodeMap(node, ancestorNodeMap)
+
+    flooredMap := make(map[*simplejson.Json]*jsonNode)
+    for key, value := range p.nodes {
+        _, ok := ancestorNodeMap[key]
+        if !ok {
+            flooredMap[key] = value
+        }
+    }
+
+    return flooredMap
+}
+
+func (p *Parser) buildJsonNodeMap(jdoc *simplejson.Json, nodes map[*simplejson.Json]*jsonNode, parent *jsonNode, parent_key string, idx int, siblings int, position *int) map[*simplejson.Json]*jsonNode {
     node := jsonNode{}
     node.parent = parent
     node.json = jdoc
@@ -82,7 +101,7 @@ func (p *Parser) findSubordinatejsonNodes(jdoc *simplejson.Json, nodes []*jsonNo
         node.typ = J_ARRAY
         for i := 0; i < length; i++ {
             element := jdoc.GetIndex(i)
-            nodes = p.findSubordinatejsonNodes(element, nodes, &node, "", i + 1, length)
+            p.buildJsonNodeMap(element, nodes, &node, "", i + 1, length, position)
         }
     }
     data, err := jdoc.Map()
@@ -91,15 +110,47 @@ func (p *Parser) findSubordinatejsonNodes(jdoc *simplejson.Json, nodes []*jsonNo
         node.typ = J_OBJECT
         for key := range data {
             element := jdoc.Get(key)
-            nodes = p.findSubordinatejsonNodes(element, nodes, &node, key, -1, -1)
+            p.buildJsonNodeMap(element, nodes, &node, key, -1, -1, position)
         }
     }
 
-    nodes = append(nodes, &node)
+    *position++
+    node.position = *position
+    if node.json != nil {
+        nodes[node.json] = &node
+    }
     return nodes
 }
 
 func (p *Parser) mapDocument() {
-    var nodes []*jsonNode
-    p.nodes = p.findSubordinatejsonNodes(p.Data, nodes, nil, "", -1, -1)
+    p.nodes = make(map[*simplejson.Json]*jsonNode)
+    var position int = 0
+    p.buildJsonNodeMap(p.Data, p.nodes, nil, "", -1, -1, &position)
+}
+
+type nodeSortFunction func(n1, n2 *jsonNode) bool
+
+type nodeSorter struct {
+    nodes []*jsonNode
+    function func(n1, n2 *jsonNode) bool
+}
+
+func (s nodeSortFunction) Sort(nodes []*jsonNode) {
+    sorter := &nodeSorter{
+        nodes: nodes,
+        function: s,
+    }
+    sort.Sort(sorter)
+}
+
+func (s *nodeSorter) Len() int {
+    return len(s.nodes)
+}
+
+func (s *nodeSorter) Swap(i, j int) {
+    s.nodes[i], s.nodes[j] = s.nodes[j], s.nodes[i]
+}
+
+func (s *nodeSorter) Less(i, j int) bool {
+    return s.function(s.nodes[i], s.nodes[j])
 }

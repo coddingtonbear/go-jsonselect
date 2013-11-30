@@ -8,7 +8,7 @@ import (
 
 func nodeIsMemberOfList(needle *jsonNode, haystack []*jsonNode) bool {
     for _, element := range haystack {
-        if element.json == needle.json {
+        if &element.json == &needle.json {
             return true
         }
     }

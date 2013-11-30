@@ -12,7 +12,7 @@ import (
 
 type Parser struct {
     Data *simplejson.Json
-    nodes []*jsonNode
+    nodes map[*simplejson.Json]*jsonNode
 }
 
 func CreateParserFromString(body string) (*Parser, error) {
@@ -44,6 +44,14 @@ func (p *Parser) evaluateSelector(selector string) ([]*jsonNode, error) {
     }
 
     logger.Print(len(nodes), " matches found")
+
+    position := func(n1, n2 *jsonNode) bool {
+        return n1.position < n2.position
+    }
+
+    logger.Println(getFormattedNodeArray(nodes))
+    nodeSortFunction(position).Sort(nodes)
+    logger.Println(getFormattedNodeArray(nodes))
 
     return nodes, nil
 }
@@ -81,7 +89,7 @@ func (p *Parser) GetValues(selector string) ([]interface{}, error) {
     return results, nil
 }
 
-func (p *Parser) selectorProduction(tokens []*token, documentMap []*jsonNode, recursionDepth int) ([]*jsonNode, error) {
+func (p *Parser) selectorProduction(tokens []*token, documentMap map[*simplejson.Json]*jsonNode, recursionDepth int) ([]*jsonNode, error) {
     var results []*jsonNode
     var matched bool
     var value interface{}
@@ -110,7 +118,7 @@ func (p *Parser) selectorProduction(tokens []*token, documentMap []*jsonNode, re
         value, tokens, _ = p.match(tokens, S_PCLASS)
         validators = append(
             validators,
-            p.pclassProduction(value),
+            p.pclassProduction(value, documentMap),
         )
     }
     _, matched, _ = p.peek(tokens, S_NTH_FUNC)
@@ -122,7 +130,7 @@ func (p *Parser) selectorProduction(tokens []*token, documentMap []*jsonNode, re
     _, matched, _ = p.peek(tokens, S_PCLASS_FUNC)
     if matched {
         value, tokens, _ = p.match(tokens, S_PCLASS_FUNC)
-        validator, tokens = p.pclassFuncProduction(value, tokens, documentMap)
+        validator, tokens = p.pclassFuncProduction(value, tokens)
         validators = append(validators, validator)
     }
     result, matched, _ := p.peek(tokens, S_OPER)
@@ -208,7 +216,7 @@ func (p *Parser) match(tokens []*token, typ tokenType) (interface{}, []*token, e
     return value, tokens, nil
 }
 
-func (p *Parser) matchjsonNodes(validators []func(*jsonNode)bool, documentMap []*jsonNode) ([]*jsonNode, error) {
+func (p *Parser) matchjsonNodes(validators []func(*jsonNode)bool, documentMap map[*simplejson.Json]*jsonNode) ([]*jsonNode, error) {
     var matches []*jsonNode
     for _, node := range documentMap {
         var passed = true
@@ -261,7 +269,7 @@ func (p *Parser) universalProduction(value interface{}) func(*jsonNode)bool {
     }
 }
 
-func (p *Parser) pclassProduction(value interface{}) func(*jsonNode)bool {
+func (p *Parser) pclassProduction(value interface{}, documentMap map[*simplejson.Json]*jsonNode) func(*jsonNode)bool {
     pclass := value.(string)
     logger.Print("Creating pclassProduction validator ", pclass)
     if pclass == "first-child" {
@@ -282,7 +290,13 @@ func (p *Parser) pclassProduction(value interface{}) func(*jsonNode)bool {
     } else if pclass == "root" {
         return func(node *jsonNode) bool {
             logger.Print("pclassProduction root ? ", node.parent, " == nil")
-            return node.parent == nil
+            if node.parent != nil {
+                _, exists := documentMap[node.parent.json]
+                if exists {
+                    return false
+                }
+            }
+            return true
         }
     } else if pclass == "empty" {
         return func(node *jsonNode) bool {
@@ -386,7 +400,7 @@ func (p *Parser) nthChildProduction(value interface{}, tokens []*token) (func(*j
     }, tokens
 }
 
-func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, documentMap []*jsonNode) (func(*jsonNode)bool, []*token) {
+func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token) (func(*jsonNode)bool, []*token) {
     sargs, tokens, _ := p.match(tokens, S_EXPR)
     pclass := value.(string)
 
