@@ -2,7 +2,6 @@ package jsonselect
 
 import (
     "encoding/json"
-    "fmt"
     "log"
     "strconv"
 )
