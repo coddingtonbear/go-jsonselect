@@ -30,7 +30,7 @@ func EnableLogger() {
     logger.Enabled = true
 }
 
-func getFormattedNodeArray(nodes []*Node) []string {
+func getFormattedNodeArray(nodes []*jsonNode) []string {
     var formatted []string
     for _, node := range nodes {
         if node != nil {

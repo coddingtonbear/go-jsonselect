@@ -86,7 +86,7 @@ func (p *Parser) selectorProduction(tokens []*token, documentMap []*jsonNode, re
     var matched bool
     var value interface{}
     var validator func(*jsonNode)bool
-    var validators = make([]func(*Node)bool, 0, 10)
+    var validators = make([]func(*jsonNode)bool, 0, 10)
     logger.Println("selectorProduction(", recursionDepth, ") starting with ", tokens[0], " - ", len(tokens), " tokens remaining.")
 
     _, matched, _ = p.peek(tokens, S_TYPE)
@@ -427,7 +427,7 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
                     ancestors = append(ancestors, node.parent)
                 }
             }
-            logger.Print("pclassFuncProduction has ? ", node, " ∈ ", getFormattedjsonNodeArray(ancestors))
+            logger.Print("pclassFuncProduction has ? ", node, " ∈ ", getFormattedNodeArray(ancestors))
             return nodeIsMemberOfList(node, ancestors)
         }, tokens
     } else if pclass == "contains" {
