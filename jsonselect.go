@@ -233,8 +233,8 @@ func (p *Parser) typeProduction(value interface{}) func(*jsonNode)bool {
         return string(node.typ) == value
     }
 }
+
 func (p *Parser) keyProduction(value interface{}) func(*jsonNode)bool {
-    // TODO: Verify this -- I'm not sure what this is supposed to match
     logger.Print("Creating keyProduction validator ", value)
     return func(node *jsonNode) bool {
         logger.Print("keyProduction ? ", node.parent_key, " == ", value)
