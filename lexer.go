@@ -45,102 +45,102 @@ const (
 
 var selectorScanner = []scannerItem{
     scannerItem{
-        regexp.MustCompile(`\([^\)]+\)`),
+        regexp.MustCompile(`^\([^\)]+\)`),
         S_EXPR,
     },
     scannerItem{
-        regexp.MustCompile(`[~*,>]`),
+        regexp.MustCompile(`^[~*,>]`),
         S_OPER,
     },
     scannerItem{
-        regexp.MustCompile(`\s`),
+        regexp.MustCompile(`^\s`),
         S_EMPTY,
     },
     scannerItem{
-        regexp.MustCompile(`(-?\d+(\.\d*)([eE][+\-]?\d+)?)`),
+        regexp.MustCompile(`^(-?\d+(\.\d*)([eE][+\-]?\d+)?)`),
         S_FLOAT,
     },
     scannerItem{
-        regexp.MustCompile(`string|boolean|null|array|object|number`),
+        regexp.MustCompile(`^string|boolean|null|array|object|number`),
         S_TYPE,
     },
     scannerItem{
-        regexp.MustCompile(`\"([_a-zA-Z]|\\[^\s0-9a-fA-F])([_a-zA-Z0-9\-]|(\\[^\s0-9a-fA-F]))*\"`),
+        regexp.MustCompile(`^\"([_a-zA-Z]|\\[^\s0-9a-fA-F])([_a-zA-Z0-9\-]|(\\[^\s0-9a-fA-F]))*\"`),
         S_WORD,
     },
     scannerItem{
-        regexp.MustCompile(`\.?\"([^"\\]|\\[^"])*\"`),
+        regexp.MustCompile(`^\.?\"([^"\\]|\\[^"])*\"`),
         S_QUOTED_IDENTIFIER,
     },
     scannerItem{
-        regexp.MustCompile(`\.([_a-zA-Z]|\\[^\s0-9a-fA-F])([_a-zA-Z0-9\-]|(\\[^\s0-9a-fA-F]))*`),
+        regexp.MustCompile(`^\.([_a-zA-Z]|\\[^\s0-9a-fA-F])([_a-zA-Z0-9\-]|(\\[^\s0-9a-fA-F]))*`),
         S_IDENTIFIER,
     },
     scannerItem{
-        regexp.MustCompile(`:(root|empty|first-child|last-child|only-child)`),
+        regexp.MustCompile(`^:(root|empty|first-child|last-child|only-child)`),
         S_PCLASS,
     },
     scannerItem{
-        regexp.MustCompile(`:(has|expr|val|contains)`),
+        regexp.MustCompile(`^:(has|expr|val|contains)`),
         S_PCLASS_FUNC,
     },
     scannerItem{
-        regexp.MustCompile(`:(nth-child|nth-last-child)`),
+        regexp.MustCompile(`^:(nth-child|nth-last-child)`),
         S_NTH_FUNC,
     },
     scannerItem{
-        regexp.MustCompile(`(&&|\|\||[\$\^<>!\*]=|[=+\-*/%<>])`),
+        regexp.MustCompile(`^(&&|\|\||[\$\^<>!\*]=|[=+\-*/%<>])`),
         S_BINOP,
     },
     scannerItem{
-        regexp.MustCompile(`true|false`),
+        regexp.MustCompile(`^true|false`),
         S_BOOL,
     },
     scannerItem{
-        regexp.MustCompile(`null`),
+        regexp.MustCompile(`^null`),
         S_NIL,
     },
     scannerItem{
-        regexp.MustCompile(`n`),
+        regexp.MustCompile(`^n`),
         S_PVAR,
     },
     scannerItem{
-        regexp.MustCompile(`odd|even`),
+        regexp.MustCompile(`^odd|even`),
         S_KEYWORD,
     },
 }
 
 var expressionScanner = []scannerItem{
     scannerItem{
-        regexp.MustCompile(`\s`),
+        regexp.MustCompile(`^\s`),
         S_EMPTY,
     },
     scannerItem{
-        regexp.MustCompile(`true|false`),
+        regexp.MustCompile(`^true|false`),
         S_BOOL,
     },
     scannerItem{
-        regexp.MustCompile(`null`),
+        regexp.MustCompile(`^null`),
         S_NIL,
     },
     scannerItem{
-        regexp.MustCompile(`-?\d+(\.\d*)?([eE][+\-]?\d+)?`),
+        regexp.MustCompile(`^-?\d+(\.\d*)?([eE][+\-]?\d+)?`),
         S_NUMBER,
     },
     scannerItem{
-        regexp.MustCompile(`\"([^\]|\[^\"])*\"`),
+        regexp.MustCompile(`^\"([^\]|\[^\"])*\"`),
         S_STRING,
     },
     scannerItem{
-        regexp.MustCompile(`x`),
+        regexp.MustCompile(`^x`),
         S_PVAR,
     },
     scannerItem{
-        regexp.MustCompile(`(&&|\|\||[\$\^<>!\*]=|[=+\-*/%<>])`),
+        regexp.MustCompile(`^(&&|\|\||[\$\^<>!\*]=|[=+\-*/%<>])`),
         S_BINOP,
     },
     scannerItem{
-        regexp.MustCompile(`\(|\)`),
+        regexp.MustCompile(`^\(|\)`),
         S_PAREN,
     },
 }
@@ -148,31 +148,30 @@ var expressionScanner = []scannerItem{
 
 func lexNextToken(input string, scanners []scannerItem) (*token, int, error) {
     for _, scanner := range scanners {
-        idx := scanner.regex.FindStringIndex(input)
-        if idx == nil {
-            continue
-        }
-        if idx[0] == 0 {
-            if scanner.typ == S_EXPR && strings.Count(input[idx[0]:idx[1]], "(") != strings.Count(input[idx[0]:idx[1]], ")") {
-                terminated := false
-                var curr int
-                for curr = idx[1]; curr <= len(input[idx[0]:]); curr++ {
-                    if strings.Count(input[idx[0]:curr], "(") == strings.Count(input[idx[0]:curr], ")") {
-                        terminated = true
-                        break
+        if scanner.regex.MatchString(input) {
+            idx := scanner.regex.FindStringIndex(input)
+            if idx[0] == 0 {
+                if scanner.typ == S_EXPR && strings.Count(input[idx[0]:idx[1]], "(") != strings.Count(input[idx[0]:idx[1]], ")") {
+                    terminated := false
+                    var curr int
+                    for curr = idx[1]; curr <= len(input[idx[0]:]); curr++ {
+                        if strings.Count(input[idx[0]:curr], "(") == strings.Count(input[idx[0]:curr], ")") {
+                            terminated = true
+                            break
+                        }
+                    }
+                    if terminated == false {
+                        return nil, len(input), errors.New(fmt.Sprintf("Unterminated expression: %s", input[idx[0]:curr-1]))
+                    } else {
+                        idx[1] = curr
                     }
                 }
-                if terminated == false {
-                    return nil, len(input), errors.New(fmt.Sprintf("Unterminated expression: %s", input[idx[0]:curr-1]))
-                } else {
-                    idx[1] = curr
-                }
+                token := getToken(
+                    scanner.typ,
+                    input[idx[0]:idx[1]],
+                )
+                return &token, idx[1], nil
             }
-            token := getToken(
-                scanner.typ,
-                input[idx[0]:idx[1]],
-            )
-            return &token, idx[1], nil
         }
     }
     return nil, len(input), errors.New(fmt.Sprintf("Parsing error at %s", input))
