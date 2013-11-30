@@ -65,7 +65,7 @@ func (p *Parser) GetJsonElements(selector string) ([]*simplejson.Json, error) {
         return nil, err
     }
 
-    var results []*simplejson.Json
+    var results = make([]*simplejson.Json, 0, len(nodes))
     for _, node := range nodes {
         results = append(
             results,
@@ -85,7 +85,7 @@ func (p *Parser) GetValues(selector string) ([]interface{}, error) {
         return nil, err
     }
 
-    var results []interface{}
+    var results = make([]interface{}, 0, len(nodes))
     for _, node := range nodes {
         results = append(
             results,
@@ -98,10 +98,10 @@ func (p *Parser) GetValues(selector string) ([]interface{}, error) {
 
 func (p *Parser) selectorProduction(tokens []*token, documentMap []*Node, recursionDepth int) ([]*Node, error) {
     var results []*Node
-    var validators []func(*Node)bool
     var matched bool
     var value interface{}
     var validator func(*Node)bool
+    var validators = make([]func(*Node)bool, 0, 10)
     logger.Println("selectorProduction(", recursionDepth, ") starting with ", tokens[0], " - ", len(tokens), " tokens remaining.")
 
     _, matched, _ = p.peek(tokens, S_TYPE)
