@@ -2,7 +2,6 @@ package jsonselect
 
 import (
     "encoding/json"
-    "fmt"
     "log"
     "strconv"
 )
@@ -138,32 +137,4 @@ func exprElementIsTruthy(e exprElement) bool {
 
 func exprElementsMatch(lhs exprElement, rhs exprElement) bool {
     return lhs.typ == rhs.typ
-}
-
-func getFormattedNodeArray(nodes []*Node) []string {
-    var formatted []string
-    for _, node := range nodes {
-        if node != nil {
-            formatted = append(formatted, fmt.Sprint(*node))
-        } else {
-            formatted = append(formatted, fmt.Sprint(nil))
-        }
-    }
-    return formatted
-}
-
-func getFormattedTokens(tokens []*token) []string {
-    var output []string
-    for _, token := range tokens {
-        output = append(output, fmt.Sprint(token.val))
-    }
-    return output
-}
-
-func getFormattedExpression(tokens []*exprElement) []string {
-    var output []string
-    for _, token := range tokens {
-        output = append(output, fmt.Sprint(token.value))
-    }
-    return output
 }
