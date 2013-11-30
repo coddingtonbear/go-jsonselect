@@ -196,8 +196,10 @@ func lex(input string, scanners []scannerItem) ([]*token, error) {
         }
     }
     logger.Print("Tokenization results: ", input)
-    for i, token := range tokens {
-        logger.Print("[", i, "] ", token)
+    if logger.Enabled {
+        for i, token := range tokens {
+            logger.Print("[", i, "] ", token)
+        }
     }
     return tokens, nil
 }

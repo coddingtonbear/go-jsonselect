@@ -307,8 +307,10 @@ func (p *Parser) nthChildProduction(value interface{}, tokens []*token) (func(*j
     pattern := nthChildRegexp.FindStringSubmatch(args.(string))
 
     logger.Print("Creating nthChildProduction validator ", pattern)
-    for idx, pat := range pattern {
-        logger.Print("[", idx, "] ", pat)
+    if logger.Enabled {
+        for idx, pat := range pattern {
+            logger.Print("[", idx, "] ", pat)
+        }
     }
 
     if pattern[5] != "" {
@@ -407,8 +409,10 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
     args, _ := lex(lexString, selectorScanner)
 
     logger.Print("pclassFuncProduction lex results for [", lexString, "]: (follow)")
-    for i, arg := range args {
-        logger.Print("[", i, "]: ", arg)
+    if logger.Enabled {
+        for i, arg := range args {
+            logger.Print("[", i, "]: ", arg)
+        }
     }
 
     if pclass == "has" {
