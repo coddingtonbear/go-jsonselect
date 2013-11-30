@@ -8,6 +8,11 @@ import (
     "github.com/latestrevision/go-simplejson"
 )
 
+// Used for storing the results of the benchmarking tests below
+// to avoid compiler optimizations.
+var parser *Parser
+var values []interface{}
+
 func getTestParser(testDocuments map[string]*simplejson.Json, testName string) (*Parser, error) {
     jsonDocument := testDocuments[testName[0:strings.Index(testName, "_")]]
     return CreateParser(jsonDocument)
@@ -186,4 +191,30 @@ func TestLevel2(t *testing.T) {
 
 func TestLevel3(t *testing.T) {
     runTestsInDirectory(t, "./conformance_tests/level_3/")
+}
+
+func BenchmarkParseDocument(b *testing.B) {
+    json_ast, _ := ioutil.ReadFile("./test_data/example_json_ast.json")
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        parser, _ = CreateParserFromString(string(json_ast))
+    }
+}
+
+func BenchmarkBasicSelector(b *testing.B) {
+    json_ast, _ := ioutil.ReadFile("./test_data/example_json_ast.json")
+    parser, _ = CreateParserFromString(string(json_ast))
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        values, _ = parser.GetValues(`.Link`)
+    }
+}
+
+func BenchmarkComplexSelector(b *testing.B) {
+    json_ast, _ := ioutil.ReadFile("./test_data/example_json_ast.json")
+    parser, _ = CreateParserFromString(string(json_ast))
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        values, _ = parser.GetValues(`.Link object:has(.Str:val("News"))`)
+    }
 }
