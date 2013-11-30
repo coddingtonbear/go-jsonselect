@@ -4,26 +4,15 @@ import (
     "errors"
     "io/ioutil"
     "log"
-    "os"
     "regexp"
     "strconv"
     "strings"
     "github.com/latestrevision/go-simplejson"
 )
 
-var logger = log.New(ioutil.Discard, "jsonselect: ", 0,)
-
 type Parser struct {
     Data *simplejson.Json
     nodes []*jsonNode
-}
-
-func EnableLogger() {
-    logger = log.New(
-        os.Stderr,
-        "jsonselect: ",
-        0,
-    )
 }
 
 func CreateParserFromString(body string) (*Parser, error) {
