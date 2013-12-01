@@ -218,3 +218,21 @@ func BenchmarkComplexSelector(b *testing.B) {
         values, _ = parser.GetValues(`.Link object:has(.Str:val("News"))`)
     }
 }
+
+func BenchmarkAncestorSelector(b *testing.B) {
+    json_ast, _ := ioutil.ReadFile("./test_data/example_json_ast.json")
+    parser, _ = CreateParserFromString(string(json_ast))
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        values, _ = parser.GetValues(`.Link object`)
+    }
+}
+
+func BenchmarkHasExpression(b *testing.B) {
+    json_ast, _ := ioutil.ReadFile("./test_data/example_json_ast.json")
+    parser, _ = CreateParserFromString(string(json_ast))
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        values, _ = parser.GetValues(`object:has(.Str:val("News"))`)
+    }
+}
