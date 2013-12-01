@@ -4,7 +4,13 @@ import (
     "encoding/json"
     "log"
     "strconv"
+    "github.com/latestrevision/go-simplejson"
 )
+
+func nodeIsMemberOfHaystack(needle *jsonNode, haystack map[*simplejson.Json]*jsonNode) bool {
+    _, ok := haystack[needle.json]
+    return ok
+}
 
 func nodeIsMemberOfList(needle *jsonNode, haystack []*jsonNode) bool {
     for _, element := range haystack {
@@ -15,21 +21,30 @@ func nodeIsMemberOfList(needle *jsonNode, haystack []*jsonNode) bool {
     return false
 }
 
-func nodeIsAncestorOfHaystackMember(needle *jsonNode, haystack []*jsonNode) bool {
-    if nodeIsMemberOfList(needle, haystack) {
+func appendAncestorsToHaystack(node *jsonNode, haystack map[*simplejson.Json]*jsonNode) {
+    if node.parent != nil {
+        haystack[node.parent.json] = node.parent
+        appendAncestorsToHaystack(node.parent, haystack)
+    }
+}
+
+func nodeIsChildOfHaystackMember(needle *jsonNode, haystack map[*simplejson.Json]*jsonNode) bool {
+    if nodeIsMemberOfHaystack(needle, haystack) {
         return true
     }
     if needle.parent == nil {
         return false
     }
-    return nodeIsAncestorOfHaystackMember(needle.parent, haystack)
+    return nodeIsChildOfHaystackMember(needle.parent, haystack)
 }
 
 func parents(lhs []*jsonNode, rhs []*jsonNode) []*jsonNode {
     var results []*jsonNode
 
+    lhsHaystack := getHaystackFromNodeList(lhs)
+
     for _, element := range rhs {
-        if nodeIsMemberOfList(element.parent, lhs) {
+        if nodeIsMemberOfHaystack(element.parent, lhsHaystack) {
             results = append(results, element)
         }
     }
@@ -39,9 +54,10 @@ func parents(lhs []*jsonNode, rhs []*jsonNode) []*jsonNode {
 
 func ancestors(lhs []*jsonNode, rhs []*jsonNode) []*jsonNode {
     var results []*jsonNode
+    haystack := getHaystackFromNodeList(lhs)
 
     for _, element := range rhs {
-        if nodeIsAncestorOfHaystackMember(element, lhs) {
+        if nodeIsChildOfHaystackMember(element, haystack) {
             results = append(results, element)
         }
     }
@@ -50,15 +66,15 @@ func ancestors(lhs []*jsonNode, rhs []*jsonNode) []*jsonNode {
 }
 
 func siblings(lhs []*jsonNode, rhs []*jsonNode) []*jsonNode {
-    var parents []*jsonNode
     var results []*jsonNode
+    parents := make(map[*simplejson.Json]*jsonNode, len(lhs))
 
     for _, element := range lhs {
-        parents = append(parents, element.parent)
+        parents[element.parent.json] = element.parent
     }
 
     for _, element := range rhs {
-        if nodeIsMemberOfList(element.parent, parents){
+        if nodeIsMemberOfHaystack(element.parent, parents){
             results = append(results, element)
         }
     }
@@ -137,4 +153,12 @@ func exprElementIsTruthy(e exprElement) bool {
 
 func exprElementsMatch(lhs exprElement, rhs exprElement) bool {
     return lhs.typ == rhs.typ
+}
+
+func getHaystackFromNodeList(nodes []*jsonNode) map[*simplejson.Json]*jsonNode {
+    hashmap := make(map[*simplejson.Json]*jsonNode, len(nodes))
+    for _, node := range nodes {
+        hashmap[node.json] = node
+    }
+    return hashmap
 }

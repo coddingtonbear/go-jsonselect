@@ -5,6 +5,7 @@ import (
     "log"
     "os"
     "strings"
+    "github.com/latestrevision/go-simplejson"
 )
 
 type Logger struct {
@@ -78,6 +79,14 @@ func (l *Logger) ClearPrefix() {
 func EnableLogger() {
     logger.prefixes = make(map[int]string)
     logger.Enabled = true
+}
+
+func getFormattedNodeMap(nodes map[*simplejson.Json]*jsonNode) []string {
+    output := make([]*jsonNode, 0, len(nodes))
+    for _, val := range nodes {
+        output = append(output, val)
+    }
+    return getFormattedNodeArray(output)
 }
 
 func getFormattedNodeArray(nodes []*jsonNode) []string {

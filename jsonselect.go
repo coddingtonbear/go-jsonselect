@@ -434,14 +434,14 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
             rvals, _ := p.selectorProduction(args, newMap, -100)
             logger.DecreaseDepth()
             logger.Print("pclassFuncProduction resursion completed with ", len(rvals), " results.")
-            var ancestors []*jsonNode
+            ancestors := make(map[*simplejson.Json]*jsonNode, len(rvals))
             for _, node := range rvals {
                 if node.parent != nil {
-                    ancestors = append(ancestors, node.parent)
+                    ancestors[node.parent.json] = node.parent
                 }
             }
-            logger.Print("pclassFuncProduction has ? ", node, " ∈ ", getFormattedNodeArray(ancestors))
-            return nodeIsMemberOfList(node, ancestors)
+            logger.Print("pclassFuncProduction has ? ", node, " ∈ ", getFormattedNodeMap(ancestors))
+            return nodeIsMemberOfHaystack(node, ancestors)
         }, tokens
     } else if pclass == "contains" {
         return func(node *jsonNode)bool {
