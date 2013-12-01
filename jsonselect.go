@@ -2,7 +2,6 @@ package jsonselect
 
 import (
     "errors"
-    "fmt"
     "io/ioutil"
     "log"
     "regexp"
@@ -215,10 +214,14 @@ func (p *Parser) match(tokens []*token, typ tokenType) (interface{}, []*token, e
 
 func (p *Parser) matchNodes(validators []func(*jsonNode)bool, documentMap []*jsonNode) ([]*jsonNode, error) {
     var matches []*jsonNode
-    nodeCount := len(documentMap)
+    if logger.Enabled {
+        nodeCount := len(documentMap)
+    }
     for idx, node := range documentMap {
         var passed = true
-        logger.SetPrefix(fmt.Sprint("[Node ", idx, "/", nodeCount, "] "))
+        if logger.Enabled {
+            logger.SetPrefix("[Node ", idx, "/", nodeCount, "] ")
+        }
         for _, validator := range validators {
             if !validator(node) {
                 passed = false

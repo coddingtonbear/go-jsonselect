@@ -63,9 +63,9 @@ func (l *Logger) DecreaseDepth() {
     }
 }
 
-func (l *Logger) SetPrefix(prefix string) {
+func (l *Logger) SetPrefix(prefix ...interface{}) {
     if logger.Enabled {
-        l.prefixes[l.recursionLevel] = prefix
+        l.prefixes[l.recursionLevel] = fmt.Sprint(prefix...)
     }
 }
 

@@ -32,7 +32,9 @@ func (p *Parser) getFlooredDocumentMap(node *jsonNode) []*jsonNode {
     var newMap []*jsonNode
     newMap = p.findSubordinatejsonNodes(node.json, newMap, nil, "", -1, -1)
 
-    logger.Print("Floored document map for ", node, " reduced node count to ", len(newMap))
+    if logger.Enabled {
+        logger.Print("Floored document map for ", node, " reduced node count to ", len(newMap))
+    }
 
     return newMap
 }
