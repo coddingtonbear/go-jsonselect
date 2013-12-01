@@ -214,8 +214,9 @@ func (p *Parser) match(tokens []*token, typ tokenType) (interface{}, []*token, e
 
 func (p *Parser) matchNodes(validators []func(*jsonNode)bool, documentMap []*jsonNode) ([]*jsonNode, error) {
     var matches []*jsonNode
+    nodeCount := 0
     if logger.Enabled {
-        nodeCount := len(documentMap)
+        nodeCount = len(documentMap)
     }
     for idx, node := range documentMap {
         var passed = true
