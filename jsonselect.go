@@ -2,6 +2,7 @@ package jsonselect
 
 import (
     "errors"
+    "fmt"
     "io/ioutil"
     "log"
     "regexp"
@@ -13,6 +14,7 @@ import (
 type Parser struct {
     Data *simplejson.Json
     nodes map[*simplejson.Json]*jsonNode
+    root *simplejson.Json
 }
 
 func CreateParserFromString(body string) (*Parser, error) {
@@ -20,14 +22,14 @@ func CreateParserFromString(body string) (*Parser, error) {
     if err != nil {
         return nil, err
     }
-    parser := Parser{json, nil}
+    parser := Parser{json, nil, nil}
     parser.mapDocument()
     return &parser, err
 }
 
 func CreateParser(json *simplejson.Json) (*Parser, error) {
     log.SetOutput(ioutil.Discard)
-    parser := Parser{json, nil}
+    parser := Parser{json, nil, nil}
     parser.mapDocument()
     return &parser, nil
 }
@@ -38,20 +40,22 @@ func (p *Parser) evaluateSelector(selector string) ([]*jsonNode, error) {
         return nil, err
     }
 
-    nodes, err := p.selectorProduction(tokens, p.nodes, 1)
+    nodeMap, err := p.selectorProduction(tokens, p.root, p.nodes, 1)
     if err != nil {
         return nil, err
     }
 
-    logger.Print(len(nodes), " matches found")
+    logger.Print(len(nodeMap), " matches found")
+
+    nodes := nodeMapToArray(nodeMap)
 
     position := func(n1, n2 *jsonNode) bool {
         return n1.position < n2.position
     }
 
-    logger.Println(getFormattedNodeArray(nodes))
+    logger.Print(getFormattedNodeArray(nodes))
     nodeSortFunction(position).Sort(nodes)
-    logger.Println(getFormattedNodeArray(nodes))
+    logger.Print(getFormattedNodeArray(nodes))
 
     return nodes, nil
 }
@@ -89,13 +93,16 @@ func (p *Parser) GetValues(selector string) ([]interface{}, error) {
     return results, nil
 }
 
-func (p *Parser) selectorProduction(tokens []*token, documentMap map[*simplejson.Json]*jsonNode, recursionDepth int) ([]*jsonNode, error) {
-    var results []*jsonNode
+func (p *Parser) selectorProduction(tokens []*token, root *simplejson.Json, documentMap map[*simplejson.Json]*jsonNode, recursionDepth int) (map[*simplejson.Json]*jsonNode, error) {
+    if root == nil {
+        panic("<nil> root")
+    }
+    results := make(map[*simplejson.Json]*jsonNode)
     var matched bool
     var value interface{}
     var validator func(*jsonNode)bool
     var validators = make([]func(*jsonNode)bool, 0, 10)
-    logger.Println("selectorProduction(", recursionDepth, ") starting with ", tokens[0], " - ", len(tokens), " tokens remaining.")
+    logger.Print("selectorProduction(", recursionDepth, ") starting with ", tokens[0], " - ", len(tokens), " tokens remaining.")
 
     _, matched, _ = p.peek(tokens, S_TYPE)
     if matched {
@@ -118,7 +125,7 @@ func (p *Parser) selectorProduction(tokens []*token, documentMap map[*simplejson
         value, tokens, _ = p.match(tokens, S_PCLASS)
         validators = append(
             validators,
-            p.pclassProduction(value, documentMap),
+            p.pclassProduction(value, root, documentMap),
         )
     }
     _, matched, _ = p.peek(tokens, S_NTH_FUNC)
@@ -144,17 +151,19 @@ func (p *Parser) selectorProduction(tokens []*token, documentMap map[*simplejson
         return nil, errors.New("No selector recognized")
     }
 
-    results, err := p.matchjsonNodes(validators, documentMap)
+    results, err := p.matchNodes(validators, documentMap)
     if err != nil {
         return nil, err
     }
-    logger.Println("Applying ", len(validators), " validators to document resulted in ", len(results), " matches")
+    logger.Print("Applying ", len(validators), " validators to document resulted in ", len(results), " matches")
 
     _, matched, _ = p.peek(tokens, S_OPER)
     if matched {
         value, tokens, _ = p.match(tokens, S_OPER)
         logger.Print("Recursing selectorProduction(", recursionDepth, ") via operator ", value, " starting with ", tokens[0], " ;", len(tokens), " tokens remaining")
-        rvals, err := p.selectorProduction(tokens, documentMap, recursionDepth+1)
+        logger.IncreaseDepth()
+        rvals, err := p.selectorProduction(tokens, root, documentMap, recursionDepth+1)
+        logger.DecreaseDepth()
         logger.Print("Recursion completed; returned control to selectorProduction(", recursionDepth, ") via operator ", value, " with ", len(rvals), " matches.")
         if err != nil {
             return nil, err
@@ -163,10 +172,7 @@ func (p *Parser) selectorProduction(tokens []*token, documentMap map[*simplejson
             case ",":
                 logger.Print("(", recursionDepth, ") Operator ',': ", len(results), " => ", len(results) + len(rvals))
                 for _, val := range rvals {
-                    // TODO: This is quite slow
-                    // it seems like it's probably quite easy to expand
-                    // the list just once
-                    results = append(results, val)
+                    results[val.json] = val
                 }
             case ">":
                 originalLength := len(results)
@@ -185,7 +191,9 @@ func (p *Parser) selectorProduction(tokens []*token, documentMap map[*simplejson
         }
     } else if len(tokens) > 0 {
         logger.Print("Recursing selectorProduction(", recursionDepth, ") for excess tokens starting with ", tokens[0], " ;", len(tokens), " tokens remaining")
-        rvals, err := p.selectorProduction(tokens, documentMap, recursionDepth+1)
+        logger.IncreaseDepth()
+        rvals, err := p.selectorProduction(tokens, root, documentMap, recursionDepth+1)
+        logger.DecreaseDepth()
         logger.Print("Recursion completed; returned control to selectorProduction(", recursionDepth, ") for excess tokens with ", len(rvals), " matches.")
         if err != nil {
             return nil, err
@@ -193,7 +201,7 @@ func (p *Parser) selectorProduction(tokens []*token, documentMap map[*simplejson
         results = ancestors(results, rvals)
     }
 
-    logger.Println("selectorProduction(", recursionDepth, ") returning ", len(results), " matches.")
+    logger.Print("selectorProduction(", recursionDepth, ") returning ", len(results), " matches.")
     return results, nil
 }
 
@@ -216,9 +224,13 @@ func (p *Parser) match(tokens []*token, typ tokenType) (interface{}, []*token, e
     return value, tokens, nil
 }
 
-func (p *Parser) matchjsonNodes(validators []func(*jsonNode)bool, documentMap map[*simplejson.Json]*jsonNode) ([]*jsonNode, error) {
-    var matches []*jsonNode
+func (p *Parser) matchNodes(validators []func(*jsonNode)bool, documentMap map[*simplejson.Json]*jsonNode) (map[*simplejson.Json]*jsonNode, error) {
+    matches := make(map[*simplejson.Json]*jsonNode)
+    nodeCount := len(documentMap)
+    counter := 0
     for _, node := range documentMap {
+        counter++
+        logger.SetPrefix(fmt.Sprint("[Node ", counter, "/", nodeCount, "] "))
         var passed = true
         for _, validator := range validators {
             if !validator(node) {
@@ -228,8 +240,9 @@ func (p *Parser) matchjsonNodes(validators []func(*jsonNode)bool, documentMap ma
         }
         if passed {
             logger.Print("MATCHED: ", node)
-            matches = append(matches, node)
+            matches[node.json] = node
         }
+        logger.ClearPrefix()
     }
     return matches, nil
 }
@@ -269,7 +282,7 @@ func (p *Parser) universalProduction(value interface{}) func(*jsonNode)bool {
     }
 }
 
-func (p *Parser) pclassProduction(value interface{}, documentMap map[*simplejson.Json]*jsonNode) func(*jsonNode)bool {
+func (p *Parser) pclassProduction(value interface{}, root *simplejson.Json, documentMap map[*simplejson.Json]*jsonNode) func(*jsonNode)bool {
     pclass := value.(string)
     logger.Print("Creating pclassProduction validator ", pclass)
     if pclass == "first-child" {
@@ -289,14 +302,11 @@ func (p *Parser) pclassProduction(value interface{}, documentMap map[*simplejson
         }
     } else if pclass == "root" {
         return func(node *jsonNode) bool {
-            logger.Print("pclassProduction root ? ", node.parent, " == nil")
-            if node.parent != nil {
-                _, exists := documentMap[node.parent.json]
-                if exists {
-                    return false
-                }
+            logger.Print("pclassProduction root ? ", node.parent, " == ", root)
+            if node.json == root {
+                return true
             }
-            return true
+            return false
         }
     } else if pclass == "empty" {
         return func(node *jsonNode) bool {
@@ -430,18 +440,26 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token) (func(
     }
 
     if pclass == "has" {
+        logger.Print(tokens)
+        panic("")
         return func(node *jsonNode)bool {
-            newMap := p.getFlooredDocumentMap(node)
             logger.Print("pclassFuncProduction recursing into selectorProduction(-100) starting with ", args[0], "; ", len(args), " tokens remaining.")
-            rvals, _ := p.selectorProduction(args, newMap, -100)
+            logger.IncreaseDepth()
+            rvals, _ := p.selectorProduction(
+                args,
+                node.json,
+                getFlooredDocumentMap(node, p.nodes),
+                -100,
+            )
+            logger.DecreaseDepth()
             logger.Print("pclassFuncProduction resursion completed with ", len(rvals), " results.")
-            var ancestors []*jsonNode
+            ancestors := make(map[*simplejson.Json]*jsonNode)
             for _, node := range rvals {
                 if node.parent != nil {
-                    ancestors = append(ancestors, node.parent)
+                    ancestors[node.parent.json] = node.parent
                 }
             }
-            logger.Print("pclassFuncProduction has ? ", node, " ∈ ", getFormattedNodeArray(ancestors))
+            logger.Print("pclassFuncProduction has ? ", node, " ∈ ", getFormattedNodeMap(ancestors))
             return nodeIsMemberOfList(node, ancestors)
         }, tokens
     } else if pclass == "contains" {

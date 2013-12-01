@@ -30,6 +30,24 @@ type jsonNode struct {
     position int
 }
 
+
+func getFlooredDocumentMap(node*jsonNode, baseMap map[*simplejson.Json]*jsonNode) map[*simplejson.Json]*jsonNode {
+    ancestors := make(map[*simplejson.Json]bool)
+    output := make(map[*simplejson.Json]*jsonNode)
+
+    buildAncestorNodeMap(node, ancestors)
+
+    for key, value := range baseMap {
+        _, is_ancestor := ancestors[key]
+        if !is_ancestor {
+            output[key] = value
+        }
+    }
+
+    return output
+}
+
+
 func buildAncestorNodeMap(node *jsonNode, ancestors map[*simplejson.Json]bool) {
     if node.parent != nil {
         ancestors[node.parent.json] = true
@@ -37,25 +55,13 @@ func buildAncestorNodeMap(node *jsonNode, ancestors map[*simplejson.Json]bool) {
     }
 }
 
-func (p *Parser) getFlooredDocumentMap(node *jsonNode) map[*simplejson.Json]*jsonNode {
-    ancestorNodeMap := make(map[*simplejson.Json]bool)
-    buildAncestorNodeMap(node, ancestorNodeMap)
-
-    flooredMap := make(map[*simplejson.Json]*jsonNode)
-    for key, value := range p.nodes {
-        _, ok := ancestorNodeMap[key]
-        if !ok {
-            flooredMap[key] = value
-        }
-    }
-
-    return flooredMap
-}
-
 func (p *Parser) buildJsonNodeMap(jdoc *simplejson.Json, nodes map[*simplejson.Json]*jsonNode, parent *jsonNode, parent_key string, idx int, siblings int, position *int) map[*simplejson.Json]*jsonNode {
     node := jsonNode{}
     node.parent = parent
     node.json = jdoc
+    if p.root == nil {
+        p.root = node.json
+    }
     if len(parent_key) > 0 {
         node.parent_key = parent_key
     }

@@ -4,18 +4,15 @@ import (
     "encoding/json"
     "log"
     "strconv"
+    "github.com/latestrevision/go-simplejson"
 )
 
-func nodeIsMemberOfList(needle *jsonNode, haystack []*jsonNode) bool {
-    for _, element := range haystack {
-        if &element.json == &needle.json {
-            return true
-        }
-    }
-    return false
+func nodeIsMemberOfList(needle *jsonNode, haystack map[*simplejson.Json]*jsonNode) bool {
+    _, ok := haystack[needle.json]
+    return ok
 }
 
-func nodeIsAncestorOfHaystackMember(needle *jsonNode, haystack []*jsonNode) bool {
+func nodeIsAncestorOfHaystackMember(needle *jsonNode, haystack map[*simplejson.Json]*jsonNode) bool {
     if nodeIsMemberOfList(needle, haystack) {
         return true
     }
@@ -25,44 +22,47 @@ func nodeIsAncestorOfHaystackMember(needle *jsonNode, haystack []*jsonNode) bool
     return nodeIsAncestorOfHaystackMember(needle.parent, haystack)
 }
 
-func parents(lhs []*jsonNode, rhs []*jsonNode) []*jsonNode {
-    var results []*jsonNode
+func parents(lhs map[*simplejson.Json]*jsonNode, rhs map[*simplejson.Json]*jsonNode) map[*simplejson.Json]*jsonNode {
+    results := make(map[*simplejson.Json]*jsonNode)
 
     for _, element := range rhs {
         if nodeIsMemberOfList(element.parent, lhs) {
-            results = append(results, element)
+            results[element.json] = element
         }
     }
 
+    logger.Print(len(results), " of [", len(rhs), "]RHS elements are parents of [", len(lhs), "]LHS")
     return results
 }
 
-func ancestors(lhs []*jsonNode, rhs []*jsonNode) []*jsonNode {
-    var results []*jsonNode
+func ancestors(lhs map[*simplejson.Json]*jsonNode, rhs map[*simplejson.Json]*jsonNode) map[*simplejson.Json]*jsonNode {
+    results := make(map[*simplejson.Json]*jsonNode)
 
     for _, element := range rhs {
         if nodeIsAncestorOfHaystackMember(element, lhs) {
-            results = append(results, element)
+            results[element.json] = element
         }
     }
 
+    logger.Print(len(results), " of [", len(rhs), "]RHS elements are ancestors of [", len(lhs), "]LHS")
     return results
 }
 
-func siblings(lhs []*jsonNode, rhs []*jsonNode) []*jsonNode {
-    var parents []*jsonNode
-    var results []*jsonNode
+func siblings(lhs map[*simplejson.Json]*jsonNode, rhs map[*simplejson.Json]*jsonNode) map[*simplejson.Json]*jsonNode {
+    parents := make(map[*simplejson.Json]*jsonNode)
+    results := make(map[*simplejson.Json]*jsonNode)
 
     for _, element := range lhs {
-        parents = append(parents, element.parent)
+        parents[element.parent.json] = element.parent
     }
 
     for _, element := range rhs {
         if nodeIsMemberOfList(element.parent, parents){
-            results = append(results, element)
+            results[element.json] = element
         }
     }
 
+    logger.Print(len(results), " of [", len(rhs), "]RHS elements are siblings of [", len(lhs), "]LHS")
     return results
 }
 
@@ -137,4 +137,15 @@ func exprElementIsTruthy(e exprElement) bool {
 
 func exprElementsMatch(lhs exprElement, rhs exprElement) bool {
     return lhs.typ == rhs.typ
+}
+
+func nodeMapToArray(nodes map[*simplejson.Json]*jsonNode) []*jsonNode {
+    output := make([]*jsonNode, 0, len(nodes))
+    for _, value := range nodes{
+        output = append(
+            output,
+            value,
+        )
+    }
+    return output
 }
