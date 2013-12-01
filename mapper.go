@@ -30,7 +30,11 @@ type jsonNode struct {
 
 func (p *Parser) getFlooredDocumentMap(node *jsonNode) []*jsonNode {
     var newMap []*jsonNode
-    return p.findSubordinatejsonNodes(node.json, newMap, nil, "", -1, -1)
+    newMap = p.findSubordinatejsonNodes(node.json, newMap, nil, "", -1, -1)
+
+    logger.Print("Floored coument map for ", node, " reduced node count to ", len(newMap))
+
+    return newMap
 }
 
 func (p *Parser) findSubordinatejsonNodes(jdoc *simplejson.Json, nodes []*jsonNode, parent *jsonNode, parent_key string, idx int, siblings int) []*jsonNode {
