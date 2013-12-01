@@ -2,6 +2,7 @@ package jsonselect
 
 import (
     "errors"
+    "fmt"
     "io/ioutil"
     "log"
     "regexp"
@@ -87,7 +88,7 @@ func (p *Parser) selectorProduction(tokens []*token, documentMap []*jsonNode, re
     var value interface{}
     var validator func(*jsonNode)bool
     var validators = make([]func(*jsonNode)bool, 0, 10)
-    logger.Println("selectorProduction(", recursionDepth, ") starting with ", tokens[0], " - ", len(tokens), " tokens remaining.")
+    logger.Print("selectorProduction(", recursionDepth, ") starting with ", tokens[0], " - ", len(tokens), " tokens remaining.")
 
     _, matched, _ = p.peek(tokens, S_TYPE)
     if matched {
@@ -136,17 +137,19 @@ func (p *Parser) selectorProduction(tokens []*token, documentMap []*jsonNode, re
         return nil, errors.New("No selector recognized")
     }
 
-    results, err := p.matchjsonNodes(validators, documentMap)
+    results, err := p.matchNodes(validators, documentMap)
     if err != nil {
         return nil, err
     }
-    logger.Println("Applying ", len(validators), " validators to document resulted in ", len(results), " matches")
+    logger.Print("Applying ", len(validators), " validators to document resulted in ", len(results), " matches")
 
     _, matched, _ = p.peek(tokens, S_OPER)
     if matched {
         value, tokens, _ = p.match(tokens, S_OPER)
         logger.Print("Recursing selectorProduction(", recursionDepth, ") via operator ", value, " starting with ", tokens[0], " ;", len(tokens), " tokens remaining")
+        logger.IncreaseDepth()
         rvals, err := p.selectorProduction(tokens, documentMap, recursionDepth+1)
+        logger.DecreaseDepth()
         logger.Print("Recursion completed; returned control to selectorProduction(", recursionDepth, ") via operator ", value, " with ", len(rvals), " matches.")
         if err != nil {
             return nil, err
@@ -177,7 +180,9 @@ func (p *Parser) selectorProduction(tokens []*token, documentMap []*jsonNode, re
         }
     } else if len(tokens) > 0 {
         logger.Print("Recursing selectorProduction(", recursionDepth, ") for excess tokens starting with ", tokens[0], " ;", len(tokens), " tokens remaining")
+        logger.IncreaseDepth()
         rvals, err := p.selectorProduction(tokens, documentMap, recursionDepth+1)
+        logger.DecreaseDepth()
         logger.Print("Recursion completed; returned control to selectorProduction(", recursionDepth, ") for excess tokens with ", len(rvals), " matches.")
         if err != nil {
             return nil, err
@@ -185,7 +190,7 @@ func (p *Parser) selectorProduction(tokens []*token, documentMap []*jsonNode, re
         results = ancestors(results, rvals)
     }
 
-    logger.Println("selectorProduction(", recursionDepth, ") returning ", len(results), " matches.")
+    logger.Print("selectorProduction(", recursionDepth, ") returning ", len(results), " matches.")
     return results, nil
 }
 
@@ -208,10 +213,12 @@ func (p *Parser) match(tokens []*token, typ tokenType) (interface{}, []*token, e
     return value, tokens, nil
 }
 
-func (p *Parser) matchjsonNodes(validators []func(*jsonNode)bool, documentMap []*jsonNode) ([]*jsonNode, error) {
+func (p *Parser) matchNodes(validators []func(*jsonNode)bool, documentMap []*jsonNode) ([]*jsonNode, error) {
     var matches []*jsonNode
-    for _, node := range documentMap {
+    nodeCount := len(documentMap)
+    for idx, node := range documentMap {
         var passed = true
+        logger.SetPrefix(fmt.Sprint("[Node ", idx, "/", nodeCount, "] "))
         for _, validator := range validators {
             if !validator(node) {
                 passed = false
@@ -419,7 +426,9 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
         return func(node *jsonNode)bool {
             newMap := p.getFlooredDocumentMap(node)
             logger.Print("pclassFuncProduction recursing into selectorProduction(-100) starting with ", args[0], "; ", len(args), " tokens remaining.")
+            logger.IncreaseDepth()
             rvals, _ := p.selectorProduction(args, newMap, -100)
+            logger.DecreaseDepth()
             logger.Print("pclassFuncProduction resursion completed with ", len(rvals), " results.")
             var ancestors []*jsonNode
             for _, node := range rvals {

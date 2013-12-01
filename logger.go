@@ -4,29 +4,79 @@ import (
     "fmt"
     "log"
     "os"
+    "strings"
 )
 
 type Logger struct {
     Enabled bool
+    recursionLevel int
+    prefixes map[int]string
 }
 
 
-var logger = Logger{false}
+var logger = Logger{false, 0, nil}
 var handler = log.New(os.Stderr, "jsonselect: ", 0)
+var recursionMarker = "⇢ "
 
-func (*Logger) Print(a ...interface{}) {
+func (l *Logger) formatPrefix(a ...interface{}) []interface{} {
+    var arguments []interface{}
+    arguments = append(
+        arguments,
+        strings.Repeat(recursionMarker, l.recursionLevel),
+    )
+    prefix, ok := l.prefixes[l.recursionLevel]
+    if ok {
+        arguments = append(
+            arguments,
+            prefix,
+        )
+    }
+    arguments = append(
+        arguments,
+        a...,
+    )
+    return arguments
+}
+
+
+func (l *Logger) Print(a ...interface{}) {
     if logger.Enabled {
-        handler.Print(a...)
+        handler.Print(l.formatPrefix(a...)...)
     }
 }
 
-func (*Logger) Println(a ...interface{}) {
+func (l *Logger) Println(a ...interface{}) {
     if logger.Enabled {
-        handler.Println(a...)
+        handler.Println(l.formatPrefix(a...)...)
+    }
+}
+
+func (l *Logger) IncreaseDepth() {
+    if logger.Enabled {
+        l.recursionLevel++
+    }
+}
+
+func (l *Logger) DecreaseDepth() {
+    if logger.Enabled {
+        l.recursionLevel--
+    }
+}
+
+func (l *Logger) SetPrefix(prefix string) {
+    if logger.Enabled {
+        l.prefixes[l.recursionLevel] = prefix
+    }
+}
+
+func (l *Logger) ClearPrefix() {
+    if logger.Enabled {
+        l.prefixes[l.recursionLevel] = ""
     }
 }
 
 func EnableLogger() {
+    logger.prefixes = make(map[int]string)
     logger.Enabled = true
 }
 
