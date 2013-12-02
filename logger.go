@@ -8,18 +8,18 @@ import (
     "github.com/latestrevision/go-simplejson"
 )
 
-type Logger struct {
+type logHandler struct {
     Enabled bool
     recursionLevel int
     prefixes map[int]string
 }
 
 
-var logger = Logger{false, 0, nil}
+var logger = logHandler{false, 0, nil}
 var handler = log.New(os.Stderr, "jsonselect: ", 0)
 var recursionMarker = "⇢ "
 
-func (l *Logger) formatPrefix(a ...interface{}) []interface{} {
+func (l *logHandler) formatPrefix(a ...interface{}) []interface{} {
     var arguments []interface{}
     arguments = append(
         arguments,
@@ -40,37 +40,37 @@ func (l *Logger) formatPrefix(a ...interface{}) []interface{} {
 }
 
 
-func (l *Logger) Print(a ...interface{}) {
+func (l *logHandler) Print(a ...interface{}) {
     if logger.Enabled {
         handler.Print(l.formatPrefix(a...)...)
     }
 }
 
-func (l *Logger) Println(a ...interface{}) {
+func (l *logHandler) Println(a ...interface{}) {
     if logger.Enabled {
         handler.Println(l.formatPrefix(a...)...)
     }
 }
 
-func (l *Logger) IncreaseDepth() {
+func (l *logHandler) IncreaseDepth() {
     if logger.Enabled {
         l.recursionLevel++
     }
 }
 
-func (l *Logger) DecreaseDepth() {
+func (l *logHandler) DecreaseDepth() {
     if logger.Enabled {
         l.recursionLevel--
     }
 }
 
-func (l *Logger) SetPrefix(prefix ...interface{}) {
+func (l *logHandler) SetPrefix(prefix ...interface{}) {
     if logger.Enabled {
         l.prefixes[l.recursionLevel] = fmt.Sprint(prefix...)
     }
 }
 
-func (l *Logger) ClearPrefix() {
+func (l *logHandler) ClearPrefix() {
     if logger.Enabled {
         l.prefixes[l.recursionLevel] = ""
     }
