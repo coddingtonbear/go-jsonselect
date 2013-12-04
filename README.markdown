@@ -60,3 +60,7 @@ func main() {
     // Results [map[title: beta rating: 90]]
 }
 ```
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/latestrevision/go-jsonselect/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
