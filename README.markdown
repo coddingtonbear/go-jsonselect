@@ -1,6 +1,6 @@
 
-[![Build Status](https://travis-ci.org/latestrevision/go-jsonselect.png?branch=master)](https://travis-ci.org/latestrevision/go-jsonselect)
-[![GoDoc](https://godoc.org/github.com/latestrevision/go-jsonselect?status.png)](http://godoc.org/github.com/latestrevision/go-jsonselect)
+[![Build Status](https://travis-ci.org/coddingtonbear/go-jsonselect.png?branch=master)](https://travis-ci.org/coddingtonbear/go-jsonselect)
+[![GoDoc](https://godoc.org/github.com/coddingtonbear/go-jsonselect?status.png)](http://godoc.org/github.com/coddingtonbear/go-jsonselect)
 
 go-jsonselect
 =============
@@ -13,13 +13,13 @@ Installation
 ------------
 
 ```
-go get github.com/latestrevision/go-jsonselect
+go get github.com/coddingtonbear/go-jsonselect
 ```
 
 Usage
 -----
 
-[API documentation is available on Godoc](http://godoc.org/github.com/latestrevision/go-jsonselect).
+[API documentation is available on Godoc](http://godoc.org/github.com/coddingtonbear/go-jsonselect).
 
 JSONSelect offers many different selectors, and describing the full usage
 is out of the scope of this document, but should you need an overview, 
@@ -35,7 +35,7 @@ package main
 
 import (
     "fmt"
-    "github.com/latestrevision/go-jsonselect"
+    "github.com/coddingtonbear/go-jsonselect"
 )
 
 var json string = `
@@ -62,5 +62,5 @@ func main() {
 ```
 
 
-[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/latestrevision/go-jsonselect/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/coddingtonbear/go-jsonselect/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
 
