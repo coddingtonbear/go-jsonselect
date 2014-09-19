@@ -4,7 +4,7 @@ import (
     "encoding/json"
     "log"
     "strconv"
-    "github.com/latestrevision/go-simplejson"
+    "github.com/coddingtonbear/go-simplejson"
 )
 
 func nodeIsMemberOfHaystack(needle *jsonNode, haystack map[*simplejson.Json]*jsonNode) bool {

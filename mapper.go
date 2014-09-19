@@ -1,7 +1,7 @@
 package jsonselect
 
 import (
-    "github.com/latestrevision/go-simplejson"
+    "github.com/coddingtonbear/go-simplejson"
 )
 
 type jsonType string

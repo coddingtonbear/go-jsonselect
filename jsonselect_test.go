@@ -5,7 +5,7 @@ import (
     "reflect"
     "strings"
     "testing"
-    "github.com/latestrevision/go-simplejson"
+    "github.com/coddingtonbear/go-simplejson"
 )
 
 // Used for storing the results of the benchmarking tests below

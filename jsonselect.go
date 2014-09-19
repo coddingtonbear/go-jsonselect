@@ -7,7 +7,7 @@ import (
     "regexp"
     "strconv"
     "strings"
-    "github.com/latestrevision/go-simplejson"
+    "github.com/coddingtonbear/go-simplejson"
 )
 
 type Parser struct {
