@@ -180,13 +180,15 @@ func runTestsInDirectory(t *testing.T, baseDirectory string) {
                     }
                 }
                 if !matched {
-                    t.Error("Element ", actual, " not found in ", expected)
+                    t.Error("Actual element", actualElement, "not found in expected.")
                     passed = false
                     break;
                 }
             }
             if len(expected) > 0 {
-                t.Error("Elements missing from output: ", expected)
+                for _, value := range expected {
+                    t.Error("Expected element", value, "not found in actual.")
+                }
                 passed = false
             }
         }
