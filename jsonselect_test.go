@@ -121,64 +121,30 @@ func runTestsInDirectory(t *testing.T, baseDirectory string) {
 
             for idx, result := range stringResults {
                 expectedEncoded := expectedOutput[idx]
-                // If the string begins with {, let's load it using simplejson,
-                // convert it to a map, and use reflection to see if they do match.
-                if strings.Index(strings.TrimSpace(expectedEncoded), "{") == 0 {
-                    expectedJson, err := simplejson.NewJson([]byte(expectedEncoded))
-                    if err != nil {
-                        t.Error(
-                            "Test ", testName, " failed due to a JSON decoding error while decoding expectation: ", err,
-                        )
-                        passed = false
-                    }
-                    resultJson, err := simplejson.NewJson([]byte(result))
-                    if err != nil {
-                        t.Error(
-                            "Test ", testName, " failed due to a JSON decoding error while decoding result: ", err,
-                        )
-                        passed = false
-                    }
 
-                    expected = append(expected, expectedJson)
-                    actual = append(actual, resultJson)
+                expectedJson, err := simplejson.NewJson([]byte(expectedEncoded))
+                if err != nil {
+                    t.Error(
+                        "Test ", testName, " failed due to a JSON decoding error while decoding expectation: ", err,
+                    )
+                    passed = false
+                }
+                resultJson, err := simplejson.NewJson([]byte(result))
+                if err != nil {
+                    t.Error(
+                        "Test ", testName, " failed due to a JSON decoding error while decoding result: ", err,
+                    )
+                    passed = false
+                }
+
+                expected = append(expected, expectedJson)
+                actual = append(actual, resultJson)
+
+                if strings.Index(strings.TrimSpace(expectedEncoded), "{") == 0 {
                     matchType = "map"
                 } else if strings.Index(strings.TrimSpace(expectedEncoded), "[") == 0 {
-                    expectedJson, err := simplejson.NewJson([]byte(expectedEncoded))
-                    if err != nil {
-                        t.Error(
-                            "Test ", testName, " failed due to a JSON decoding error while decoding expectation: ", err,
-                        )
-                        passed = false
-                    }
-                    resultJson, err := simplejson.NewJson([]byte(result))
-                    if err != nil {
-                        t.Error(
-                            "Test ", testName, " failed due to a JSON decoding error while decoding result: ", err,
-                        )
-                        passed = false
-                    }
-
-                    expected = append(expected, expectedJson)
-                    actual = append(actual, resultJson)
                     matchType = "array"
                 } else if expectedEncoded != result {
-                    expectedJson, err := simplejson.NewJson([]byte(expectedEncoded))
-                    if err != nil {
-                        t.Error(
-                            "Test ", testName, " failed due to a JSON decoding error while decoding expectation: ", err,
-                        )
-                        passed = false
-                    }
-                    resultJson, err := simplejson.NewJson([]byte(result))
-                    if err != nil {
-                        t.Error(
-                            "Test ", testName, " failed due to a JSON decoding error while decoding result: ", err,
-                        )
-                        passed = false
-                    }
-
-                    expected = append(expected, expectedJson)
-                    actual = append(actual, resultJson)
                     matchType = "string"
                 }
             }
