@@ -115,7 +115,10 @@ func runTestsInDirectory(t *testing.T, baseDirectory string) {
             t.Error("Test ", testName, " failed due to number of results being mismatched; ", len(stringResults), " != ", len(expectedOutput), ": [Actual] ", stringResults, " != [Expected] ", expectedOutput)
             passed = false
         } else {
-            var matched bool = true
+            var expected = make([]*simplejson.Json, 0, 10)
+            var actual = make([]*simplejson.Json, 0, 10)
+            matchType := "string"
+
             for idx, result := range stringResults {
                 expectedEncoded := expectedOutput[idx]
                 // If the string begins with {, let's load it using simplejson,
@@ -135,13 +138,10 @@ func runTestsInDirectory(t *testing.T, baseDirectory string) {
                         )
                         passed = false
                     }
-                    result := reflect.DeepEqual(
-                        expectedJson.MustMap(),
-                        resultJson.MustMap(),
-                    )
-                    if !result {
-                        matched = false
-                    }
+
+                    expected = append(expected, expectedJson)
+                    actual = append(actual, resultJson)
+                    matchType = "map"
                 } else if strings.Index(strings.TrimSpace(expectedEncoded), "[") == 0 {
                     expectedJson, err := simplejson.NewJson([]byte(expectedEncoded))
                     if err != nil {
@@ -157,26 +157,77 @@ func runTestsInDirectory(t *testing.T, baseDirectory string) {
                         )
                         passed = false
                     }
-                    result := reflect.DeepEqual(
-                        expectedJson.MustArray(),
-                        resultJson.MustArray(),
-                    )
-                    if !result {
-                        matched = false
-                    }
+
+                    expected = append(expected, expectedJson)
+                    actual = append(actual, resultJson)
+                    matchType = "array"
                 } else if expectedEncoded != result {
-                    matched = false
+                    expectedJson, err := simplejson.NewJson([]byte(expectedEncoded))
+                    if err != nil {
+                        t.Error(
+                            "Test ", testName, " failed due to a JSON decoding error while decoding expectation: ", err,
+                        )
+                        passed = false
+                    }
+                    resultJson, err := simplejson.NewJson([]byte(result))
+                    if err != nil {
+                        t.Error(
+                            "Test ", testName, " failed due to a JSON decoding error while decoding result: ", err,
+                        )
+                        passed = false
+                    }
+
+                    expected = append(expected, expectedJson)
+                    actual = append(actual, resultJson)
+                    matchType = "string"
+                }
+            }
+
+            // Iterate over each of the actual elements; if:
+            // * We find a match, remove the match from the expected.
+            // * We do not find a match, report an error
+            for _, actualElement := range actual {
+                var matched bool = false
+                for expectedIdx, expectedElement := range expected {
+                    if matchType == "map" {
+                        matched = reflect.DeepEqual(
+                            expectedElement.MustMap(),
+                            actualElement.MustMap(),
+                        )
+                    } else if matchType == "array" {
+                        matched = reflect.DeepEqual(
+                            expectedElement.MustArray(),
+                            actualElement.MustArray(),
+                        )
+                    } else if matchType == "string" {
+                        matched = reflect.DeepEqual(
+                            expectedElement.MustString(),
+                            actualElement.MustString(),
+                        )
+                    }
+                    if matched {
+                        expected = append(
+                            expected[:expectedIdx],
+                            expected[expectedIdx+1:]...
+                        )
+                        break
+                    }
                 }
                 if !matched {
-                    t.Error(
-                        "Test ", testName, " failed on item #", idx, ": [Actual] ", result, " != [Expected] ", expectedEncoded,
-                    )
+                    t.Error("Element ", actual, " not found in ", expected)
                     passed = false
+                    break;
                 }
+            }
+            if len(expected) > 0 {
+                t.Error("Elements missing from output: ", expected)
+                passed = false
             }
         }
         if passed {
             t.Log("Test ", testName, " PASSED")
+        } else {
+            t.Error("Test ", testName, " FAILED")
         }
     }
 }
