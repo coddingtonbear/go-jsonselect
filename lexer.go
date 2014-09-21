@@ -174,7 +174,7 @@ func lexNextToken(input string, scanners []scannerItem) (*token, int, error) {
             }
         }
     }
-    return nil, len(input), errors.New(fmt.Sprintf("Parsing error at %s", input))
+    return nil, len(input), errors.New(fmt.Sprintf("Selector parsing error at %s", input))
 }
 
 
