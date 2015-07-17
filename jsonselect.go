@@ -2,12 +2,13 @@ package jsonselect
 
 import (
 	"errors"
-	"github.com/coddingtonbear/go-simplejson"
 	"io/ioutil"
 	"log"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/coddingtonbear/go-simplejson"
 )
 
 type Parser struct {
@@ -87,7 +88,9 @@ func (p *Parser) selectorProduction(tokens []*token, documentMap []*jsonNode, re
 	var value interface{}
 	var validator func(*jsonNode) bool
 	var validators = make([]func(*jsonNode) bool, 0, 10)
-	logger.Print("selectorProduction(", recursionDepth, ") starting with ", tokens[0], " - ", len(tokens), " tokens remaining.")
+	if len(tokens) > 0 {
+		logger.Print("selectorProduction(", recursionDepth, ") starting with ", tokens[0], " - ", len(tokens), " tokens remaining.")
+	}
 
 	_, matched, _ = p.peek(tokens, S_TYPE)
 	if matched {
@@ -403,33 +406,39 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
 
 	logger.Print("Creating pclassFuncProduction validator ", pclass)
 
-	if pclass == "expr" {
+	logme := func(lexString string, args []*token) {
+		logger.Print("pclassFuncProduction lex results for [", lexString, "]: (follow)")
+		if logger.Enabled {
+			for i, arg := range args {
+				logger.Print("[", i, "]: ", arg)
+			}
+		}
+	}
+
+	switch pclass {
+	case "expr":
 		tokens, err := lex(sargs.(string), expressionScanner)
 		if err != nil {
 			panic(err)
 		}
+		logme(sargs.(string), tokens)
 		var tokens_to_return []*token
 		return func(node *jsonNode) bool {
 			result := p.parseExpression(tokens, node)
 			logger.Print("pclassFuncProduction expr ? ", result)
 			return exprElementIsTruthy(result)
 		}, tokens_to_return
-	}
 
-	lexString := sargs.(string)[1 : len(sargs.(string))-1]
-	args, _ := lex(lexString, selectorScanner)
+	case "has":
+		lexString := sargs.(string)[1 : len(sargs.(string))-1]
+		args, _ := lex(lexString, selectorScanner)
+		logme(lexString, args)
 
-	logger.Print("pclassFuncProduction lex results for [", lexString, "]: (follow)")
-	if logger.Enabled {
-		for i, arg := range args {
-			logger.Print("[", i, "]: ", arg)
-		}
-	}
-
-	if pclass == "has" {
 		return func(node *jsonNode) bool {
 			newMap := p.getFlooredDocumentMap(node)
-			logger.Print("pclassFuncProduction recursing into selectorProduction(-100) starting with ", args[0], "; ", len(args), " tokens remaining.")
+			if len(args) > 0 {
+				logger.Print("pclassFuncProduction recursing into selectorProduction(-100) starting with ", args[0], "; ", len(args), " tokens remaining.")
+			}
 			logger.IncreaseDepth()
 			rvals, _ := p.selectorProduction(args, newMap, -100)
 			logger.DecreaseDepth()
@@ -443,24 +452,49 @@ func (p *Parser) pclassFuncProduction(value interface{}, tokens []*token, docume
 			logger.Print("pclassFuncProduction has ? ", node, " ∈ ", getFormattedNodeMap(ancestors))
 			return nodeIsMemberOfHaystack(node, ancestors)
 		}, tokens
-	} else if pclass == "contains" {
+
+	case "contains":
+		lexString := sargs.(string)[1 : len(sargs.(string))-1]
+		args, _ := lex(lexString, selectorScanner)
+		logme(lexString, args)
+
 		return func(node *jsonNode) bool {
 			logger.Print("pclassFuncProduction contains ? ", node.typ, " == ", J_STRING, " AND ", strings.Count(node.value.(string), args[0].val.(string)), " > 0")
 			return node.typ == J_STRING && strings.Count(node.value.(string), args[0].val.(string)) > 0
 		}, tokens
-	} else if pclass == "val" {
+
+	case "val":
+		lexString := sargs.(string)[1 : len(sargs.(string))-1]
+		args, _ := lex(lexString, expressionScanner)
+		logme(lexString, args)
+		if len(args) != 1 {
+			logger.Print("Error: val must have one argument, not ", len(args))
+			return func(node *jsonNode) bool {
+				logger.Print("Asserting false due to failed pclassFuncProduction")
+				return false
+			}, tokens
+		}
+		if args[0].typ == S_PAREN || args[0].typ == S_EMPTY || args[0].typ == S_BINOP {
+			logger.Print("Error: val has invalid argument ", args[0].typ)
+			return func(node *jsonNode) bool {
+				logger.Print("Asserting false due to failed pclassFuncProduction")
+				return false
+			}, tokens
+		}
+
 		return func(node *jsonNode) bool {
 			lhsString := getJsonString(node.value)
 			rhsString := getJsonString(args[0].val)
 			logger.Print("pclassFuncProduction val ? ", lhsString, " == ", rhsString)
 			return lhsString == rhsString
 		}, tokens
-	}
 
-	// If we didn't find a known pclass, do not match anything.
-	logger.Print("Error: Unknown pclass: ", pclass)
-	return func(node *jsonNode) bool {
-		logger.Print("Asserting false due to failed pclassFuncProduction")
-		return false
-	}, tokens
+	default:
+		// If we didn't find a known pclass, do not match anything.
+		logger.Print("Error: Unknown pclass: ", pclass)
+		return func(node *jsonNode) bool {
+			logger.Print("Asserting false due to failed pclassFuncProduction")
+			return false
+		}, tokens
+	}
 }

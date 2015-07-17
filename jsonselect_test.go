@@ -212,6 +212,10 @@ func TestLevel3(t *testing.T) {
 	runTestsInDirectory(t, "./conformance_tests/level_3/")
 }
 
+func TestExtra(t *testing.T) {
+	runTestsInDirectory(t, "./test_data/extra/")
+}
+
 func BenchmarkParseDocument(b *testing.B) {
 	json_ast, _ := ioutil.ReadFile("./test_data/example_json_ast.json")
 	b.ResetTimer()

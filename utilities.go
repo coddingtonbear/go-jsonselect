@@ -2,9 +2,10 @@ package jsonselect
 
 import (
 	"encoding/json"
-	"github.com/coddingtonbear/go-simplejson"
 	"log"
 	"strconv"
+
+	"github.com/coddingtonbear/go-simplejson"
 )
 
 func nodeIsMemberOfHaystack(needle *jsonNode, haystack map[*simplejson.Json]*jsonNode) bool {
@@ -44,7 +45,7 @@ func parents(lhs []*jsonNode, rhs []*jsonNode) []*jsonNode {
 	lhsHaystack := getHaystackFromNodeList(lhs)
 
 	for _, element := range rhs {
-		if nodeIsMemberOfHaystack(element.parent, lhsHaystack) {
+		if element.parent != nil && nodeIsMemberOfHaystack(element.parent, lhsHaystack) {
 			results = append(results, element)
 		}
 	}
@@ -70,11 +71,13 @@ func siblings(lhs []*jsonNode, rhs []*jsonNode) []*jsonNode {
 	parents := make(map[*simplejson.Json]*jsonNode, len(lhs))
 
 	for _, element := range lhs {
-		parents[element.parent.json] = element.parent
+		if element.parent != nil {
+			parents[element.parent.json] = element.parent
+		}
 	}
 
 	for _, element := range rhs {
-		if nodeIsMemberOfHaystack(element.parent, parents) {
+		if element.parent != nil && nodeIsMemberOfHaystack(element.parent, parents) {
 			results = append(results, element)
 		}
 	}
