@@ -49,7 +49,9 @@ var selectorScanner = []scannerItem{
 		S_EXPR,
 	},
 	scannerItem{
-		regexp.MustCompile(`^[~*,>]`),
+		// we match any of the operators and all surrounding whitespace
+		// to ensure we don't get extra space operators
+		regexp.MustCompile(`^\s*[~*,> ]\s*`),
 		S_OPER,
 	},
 	scannerItem{
@@ -81,11 +83,17 @@ var selectorScanner = []scannerItem{
 		S_PCLASS,
 	},
 	scannerItem{
-		regexp.MustCompile(`^:(has|expr|val|contains)`),
+		// we match any trailing whitespace to ensure that we don't get a space operator
+		// if whitespace exists before the expression. We must support whitespace before
+		// the expression in order to pass the basic_has-whitespace test.
+		regexp.MustCompile(`^:(has|expr|val|contains)\s*`),
 		S_PCLASS_FUNC,
 	},
 	scannerItem{
-		regexp.MustCompile(`^:(nth-child|nth-last-child)`),
+		// we match any trailing whitespace to ensure that we don't get a space operator
+		// if whitespace exists before the expression. We must support whitespace before
+		// the expression in order to pass the basic_has-whitespace test.
+		regexp.MustCompile(`^:(nth-child|nth-last-child)\s*`),
 		S_NTH_FUNC,
 	},
 	scannerItem{
@@ -177,6 +185,10 @@ func lexNextToken(input string, scanners []scannerItem) (*token, int, error) {
 }
 
 func lex(input string, scanners []scannerItem) ([]*token, error) {
+
+	// trim whitespace to ensure we don't get hanging space operators
+	input = strings.TrimSpace(input)
+
 	var tokens []*token
 	var start = 0
 	for start < len(input) {
@@ -203,8 +215,13 @@ func lex(input string, scanners []scannerItem) ([]*token, error) {
 
 func getToken(typ tokenType, val string) token {
 	switch typ {
-	case S_IDENTIFIER, S_PCLASS, S_PCLASS_FUNC, S_NTH_FUNC:
+	case S_IDENTIFIER, S_PCLASS:
 		return token{typ, val[1:]}
+	case S_PCLASS_FUNC, S_NTH_FUNC:
+		// we match trailing whitespace in S_PCLASS_FUNC and S_NTH_FUNC to ensure
+		// we don't get a space operator before the expression. So we must trim the
+		// matched whitespace here
+		return token{typ, strings.TrimSpace(val[1:])}
 	case S_QUOTED_IDENTIFIER:
 		return token{S_IDENTIFIER, val[2 : len(val)-1]}
 	case S_NIL:
@@ -224,6 +241,15 @@ func getToken(typ tokenType, val string) token {
 		return token{typ, val[1 : len(val)-1]}
 	case S_STRING:
 		return token{S_STRING, val[1 : len(val)-1]}
+	case S_OPER:
+		// If the operator is padded with whitespace, we match the whole string so we must
+		// trim leading and trailing whitespace.
+		inner := strings.TrimSpace(val)
+		if inner == "" {
+			// If we're left with an empty string, we want a space operator.
+			inner = " "
+		}
+		return token{S_OPER, inner}
 	default:
 		return token{typ, val}
 	}
