@@ -1,0 +1,94 @@
+[
+  {
+    "cloud_type": "amazon",
+    "description": "Amazon's US Cloud on the East Coast",
+    "display_name": "AWS US-East",
+    "links": [
+      {
+        "href": "/api/clouds/1",
+        "rel": "self"
+      },
+      {
+        "href": "/api/clouds/1/datacenters",
+        "rel": "datacenters"
+      },
+      {
+        "href": "/api/clouds/1/instance_types",
+        "rel": "instance_types"
+      },
+      {
+        "href": "/api/clouds/1/security_groups",
+        "rel": "security_groups"
+      },
+      {
+        "href": "/api/clouds/1/instances",
+        "rel": "instances"
+      },
+      {
+        "href": "/api/clouds/1/ssh_keys",
+        "rel": "ssh_keys"
+      },
+      {
+        "href": "/api/clouds/1/images",
+        "rel": "images"
+      },
+      {
+        "href": "/api/clouds/1/ip_addresses",
+        "rel": "ip_addresses"
+      },
+      {
+        "href": "/api/clouds/1/ip_address_bindings",
+        "rel": "ip_address_bindings"
+      },
+      {
+        "href": "/api/clouds/1/volume_attachments",
+        "rel": "volume_attachments"
+      },
+      {
+        "href": "/api/clouds/1/recurring_volume_attachments",
+        "rel": "recurring_volume_attachments"
+      },
+      {
+        "href": "/api/clouds/1/volume_snapshots",
+        "rel": "volume_snapshots"
+      },
+      {
+        "href": "/api/clouds/1/volume_types",
+        "rel": "volume_types"
+      },
+      {
+        "href": "/api/clouds/1/volumes",
+        "rel": "volumes"
+      },
+      {
+        "href": "/api/clouds/1/subnets",
+        "rel": "subnets"
+      }
+    ],
+    "name": "EC2 us-east-1"
+  },
+  {
+    "cloud_type": "blue_skies",
+    "description": "Non-cloud for generating servers to be used with instances not managed by a cloud controller",
+    "display_name": "BlueSkies",
+    "links": [
+      {
+        "href": "/api/clouds/2535",
+        "rel": "self"
+      },
+      {
+        "href": "/api/clouds/2535/instance_types",
+        "rel": "instance_types"
+      },
+      {
+        "href": "/api/clouds/2535/instances",
+        "rel": "instances"
+      },
+      {
+        "href": "/api/clouds/2535/images",
+        "rel": "images"
+      }
+    ],
+    "name": "BlueSkies"
+  }
+]

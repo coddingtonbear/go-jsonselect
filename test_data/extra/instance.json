@@ -1,0 +1,15 @@
+{
+  "name": "foo",
+  "child": {
+    "bar": {
+      "name": "barname"
+    },
+    "baz": {
+      "name": "bazname"
+    },
+    "name": {
+      "name": "childname"
+    }
+  }
+}
+
