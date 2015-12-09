@@ -21,8 +21,8 @@ package main
 //
 //     cat jsonfile | jsonselect -q -i .event .properties
 //
-
-
+//
+// Merely running `cat jsonfile | jsonselect -i` will display `:root` by default.
 
 import (
 	"bufio"
@@ -47,9 +47,14 @@ func main() {
 
 	errored := false
 
+	args := flag.Args()
+	if len(args) == 0 {
+		args = append(args, ":root")
+	}
+
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
-		elements, err := elementsForAllPatterns(scanner.Text(), flag.Args())
+		elements, err := elementsForAllPatterns(scanner.Text(), args)
 		if err != nil {
 			log.Println("Error:", err)
 			return
