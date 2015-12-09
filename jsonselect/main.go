@@ -1,29 +1,5 @@
 package main
 
-// jsonselect is a command-line tool to apply JSONSelect filters to
-// JSON through stdin, line by line.
-//
-// You can use as (eg. filtering Mixpanel-like event data):
-//
-// Extract the `event` prop, one by line:
-//
-//     cat jsonfile | jsonselect .event
-//
-// Extract two lines for each incoming line, one is the `event` property, the other the JSONPath equivalent to `.properties.os_name`
-//
-//     cat jsonfile | jsonselect .event ".properties .os_name"
-//
-// Same thing, on a single line, separated by \t characters:
-//
-//     cat jsonfile | jsonselect -s .event ".properties .os_name"
-//
-// Nicely indented properties dictionary, prefixed with the `event` as quoted (-q) text:
-//
-//     cat jsonfile | jsonselect -q -i .event .properties
-//
-//
-// Merely running `cat jsonfile | jsonselect -i` will display `:root` by default.
-
 import (
 	"bufio"
 	"encoding/json"
