@@ -155,7 +155,7 @@ func (p *Parser) evaluateExpressionWithPrecedence(elements []*exprElement, prece
 }
 
 func (p *Parser) evaluateExpression(elements []*exprElement) exprElement {
-	for i := 1; i < 5; i++ {
+	for i := 1; i <= 5; i++ {
 		elements = p.evaluateExpressionWithPrecedence(elements, i)
 	}
 	if len(elements) > 1 {
