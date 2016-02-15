@@ -16,6 +16,7 @@ var precedenceMap = map[string]int{
 	"+":  2,
 	"-":  2,
 	"<=": 3,
+	">=": 3,
 	"<":  3,
 	">":  3,
 	"$=": 3,
@@ -61,7 +62,7 @@ var comparatorMap = map[string]func(lhs exprElement, rhs exprElement) exprElemen
 		return exprElement{false, J_BOOLEAN}
 	},
 	">=": func(lhs exprElement, rhs exprElement) exprElement {
-		if getFloat64(lhs.value) > getFloat64(rhs.value) {
+		if getFloat64(lhs.value) >= getFloat64(rhs.value) {
 			return exprElement{true, J_BOOLEAN}
 		}
 		return exprElement{false, J_BOOLEAN}
